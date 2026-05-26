@@ -974,22 +974,51 @@ function renderDashboard(){
   const semH=state.horas.filter(h=>h.data>=week).reduce((a,h)=>a+h.horas,0);
   document.getElementById('dash-horas-semana').textContent=semH>0?'Esta semana: '+formatH(semH):'';
 
-  // revisões de hoje
+  // revisões de hoje + pendentes
   const today=todayStr();
   const byRevDay={};
   state.revisoes.forEach(r=>{r.revDates.forEach((d,i)=>{if(!byRevDay[d])byRevDay[d]=[];byRevDay[d].push({r,typeIdx:i});});});
   const todayRevs=byRevDay[today]||[];
+  const labels=['24h','7d','30d'],colors=['#185FA5','#854F0B','#3C3489'],bgs=['#E6F1FB','#FAEEDA','#EEEDFE'];
+
+  // pending = past dates not done
+  const pendingRevs=[];
+  Object.entries(byRevDay).forEach(([d,revs])=>{
+    if(d<today){revs.forEach(({r,typeIdx})=>{if(!r.done[typeIdx])pendingRevs.push({r,typeIdx,date:d});});}
+  });
+  pendingRevs.sort((a,b)=>b.date.localeCompare(a.date));
+
   const listEl=document.getElementById('today-rev-list');
-  if(!todayRevs.length){listEl.innerHTML='<div style="font-size:12px;color:var(--text2);">Nenhuma revisão hoje.</div>';}
-  else{
-    const labels=['24h','7d','30d'],colors=['#185FA5','#854F0B','#3C3489'],bgs=['#E6F1FB','#FAEEDA','#EEEDFE'];
-    listEl.innerHTML=todayRevs.map(({r,typeIdx})=>`
-      <div class="today-rev-item ${r.done[typeIdx]?'done-item':''}">
-        <input class="today-rev-check" type="checkbox" ${r.done[typeIdx]?'checked':''} onchange="toggleDone(${r.id},${typeIdx})" title="Marcar revisão"/>
-        <span class="today-rev-label">${buildChipLabel(r)}</span>
-        <span class="today-rev-badge" style="background:${bgs[typeIdx]};color:${colors[typeIdx]};">${labels[typeIdx]}</span>
-      </div>`).join('');
+  let html='';
+
+  if(!todayRevs.length && !pendingRevs.length){
+    html='<div style="font-size:12px;color:var(--text2);">Nenhuma revisão hoje.</div>';
+  } else {
+    if(todayRevs.length){
+      html+=todayRevs.map(({r,typeIdx})=>`
+        <div class="today-rev-item ${r.done[typeIdx]?'done-item':''}">
+          <input class="today-rev-check" type="checkbox" ${r.done[typeIdx]?'checked':''} onchange="toggleDone(${r.id},${typeIdx})" title="Marcar revisão"/>
+          <span class="today-rev-label">${buildChipLabel(r)}</span>
+          <span class="today-rev-badge" style="background:${bgs[typeIdx]};color:${colors[typeIdx]};">${labels[typeIdx]}</span>
+        </div>`).join('');
+    } else {
+      html+='<div style="font-size:12px;color:var(--text2);">Nenhuma revisão hoje.</div>';
+    }
+    if(pendingRevs.length){
+      html+=`<div style="border-top:1px solid var(--border);margin:8px 0 6px;"></div>
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#A32D2D;margin-bottom:4px;">Pendentes (${pendingRevs.length})</div>`;
+      html+=pendingRevs.slice(0,5).map(({r,typeIdx,date})=>`
+        <div class="today-rev-item">
+          <input class="today-rev-check" type="checkbox" onchange="toggleDone(${r.id},${typeIdx})" title="Marcar revisão"/>
+          <span class="today-rev-label" style="color:var(--text2);">${buildChipLabel(r)}</span>
+          <span class="today-rev-badge" style="background:#FCEBEB;color:#A32D2D;">${labels[typeIdx]}</span>
+        </div>`).join('');
+      if(pendingRevs.length>5){
+        html+=`<div style="font-size:11px;color:var(--text2);margin-top:4px;">+ ${pendingRevs.length-5} pendentes anteriores</div>`;
+      }
+    }
   }
+  listEl.innerHTML=html;
 
   // lembretes
   const lemEl=document.getElementById('lembretes-view');
@@ -1294,10 +1323,8 @@ function drawDonut(byDisc){
     angle+=sweep;
   });
   // center text
-  const _tmp=document.createElement("span");
-  document.body.appendChild(_tmp);
-  const textFill=getComputedStyle(_tmp).color||"#1a2420";
-  document.body.removeChild(_tmp);
+  const theme=document.documentElement.getAttribute("data-theme")||"";
+  const textFill={"dark":"#f0ece4","sepia":"#2a1f0e"}[theme]||"#1a2420";
   html+=`<text x="${cx}" y="${cy-7}" text-anchor="middle" font-size="17" font-weight="600" fill="${textFill}">${formatH(total)}</text>`;
   html+=`<text x="${cx}" y="${cy+10}" text-anchor="middle" font-size="10" fill="${textFill}" opacity="0.5">total</text>`;
   svg.innerHTML=html;
@@ -1354,6 +1381,7 @@ function openDiscModal(id){
         <span>Cor da disciplina</span>
         <input type="color" id="disc-cor-edit" value="${cor}" style="width:36px;height:28px;padding:2px;border-radius:4px;cursor:pointer;" onchange="updateDiscColor(${id},this.value)"/>
       </label>
+      <button onclick="document.getElementById('confirm-overlay').classList.remove('open')" style="width:100%;justify-content:center;background:var(--blue);color:#fff;border-color:var(--blue);">Salvar e fechar</button>
       <button onclick="doResetDisc(${id})" style="background:#FFF8E6;color:#854F0B;border-color:#FAC775;width:100%;justify-content:center;">Zerar progresso (manter disciplina)</button>
       <button onclick="doDeleteDisc(${id})" style="background:#FCEBEB;color:#A32D2D;border-color:#E8B4B4;width:100%;justify-content:center;">Excluir disciplina</button>
     </div>`);
