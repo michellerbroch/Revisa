@@ -341,8 +341,8 @@ button.sm{padding:5px 10px;font-size:12px;}
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg2);border-radius:var(--radius-sm);">
             <div>
-              <div style="font-size:12px;font-weight:500;">Revisões de hoje</div>
-              <div style="font-size:11px;color:var(--text2);">Cor do título do bloco</div>
+              <div style="font-size:12px;font-weight:500;">Revisões e Pendentes</div>
+              <div style="font-size:11px;color:var(--text2);">Cor dos títulos dos blocos</div>
             </div>
             <input type="color" id="color-revisoes" style="width:36px;height:30px;padding:2px;border-radius:6px;cursor:pointer;border:0.5px solid var(--border2);"/>
           </div>
@@ -380,7 +380,7 @@ button.sm{padding:5px 10px;font-size:12px;}
     <p id="confirm-msg" style="font-size:13px;color:var(--text2);margin-bottom:1.25rem;line-height:1.6;"></p>
     <div id="confirm-extra" style="margin-bottom:1rem;display:none;"></div>
     <div class="modal-actions">
-      <button onclick="closeConfirm()">Cancelar</button>
+      <button onclick="confirmCancel()">Cancelar</button>
       <button id="confirm-ok-btn" class="btn-save" onclick="confirmOk()">Confirmar</button>
     </div>
   </div>
@@ -1192,11 +1192,14 @@ function toggleDone(id,typeIdx){
   const wasDone=r.done[typeIdx];
   const rid=r.id*100+typeIdx;
   if(wasDone){
+    // uncheck: remove directly
     r.done[typeIdx]=false;
     state.horas=state.horas.filter(h=>h.id!==rid);
     save();renderTimeline();renderHoras();renderDashboard();
     return;
   }
+  // check: show time popup, revert checkbox if cancelled
+  // find the checkbox and uncheck it visually until confirmed
   showConfirm('Revisão concluída','Quanto tempo levou esta revisão?','Confirmar','',
     ()=>{
       const mins=parseInt(document.getElementById('rev-time-input').value)||20;
@@ -1208,7 +1211,8 @@ function toggleDone(id,typeIdx){
       <input type="number" id="rev-time-input" value="20" min="1" max="480"
         style="width:75px;text-align:center;font-size:20px;font-weight:700;"/>
       <span style="font-size:13px;color:var(--text2);">minutos</span>
-    </div>`
+    </div>`,
+    ()=>{renderTimeline();renderDashboard();}  // onCancel: rerender to revert checkbox
   );
 }
 
@@ -1323,8 +1327,9 @@ function drawDonut(byDisc){
     angle+=sweep;
   });
   // center text
-  const theme=document.documentElement.getAttribute("data-theme")||"";
-  const textFill={"dark":"#f0ece4","sepia":"#2a1f0e"}[theme]||"#1a2420";
+  const _theme=document.documentElement.getAttribute("data-theme")||"light";
+  const _themeMap={"light":"#1a2420","dark":"#f0ece4","sepia":"#2a1f0e","":"#1a2420"};
+  const textFill=_themeMap[_theme]||"#1a2420";
   html+=`<text x="${cx}" y="${cy-7}" text-anchor="middle" font-size="17" font-weight="600" fill="${textFill}">${formatH(total)}</text>`;
   html+=`<text x="${cx}" y="${cy+10}" text-anchor="middle" font-size="10" fill="${textFill}" opacity="0.5">total</text>`;
   svg.innerHTML=html;
@@ -1354,8 +1359,8 @@ function renderHoras(){
 }
 
 // ── CONFIRM / DISC MODAL ───────────────────────────────
-let confirmCtx=null;
-function showConfirm(title,msg,okLabel,okStyle,onOk,extraHtml){
+let confirmCtx=null,cancelCtx=null;
+function showConfirm(title,msg,okLabel,okStyle,onOk,extraHtml,onCancel){
   document.getElementById('confirm-title').textContent=title;
   document.getElementById('confirm-msg').textContent=msg;
   const okBtn=document.getElementById('confirm-ok-btn');
@@ -1365,11 +1370,21 @@ function showConfirm(title,msg,okLabel,okStyle,onOk,extraHtml){
   if(extraHtml){extra.innerHTML=extraHtml;extra.style.display='block';}
   else{extra.style.display='none';}
   okBtn.style.display=onOk?'':' none';
-  confirmCtx=onOk;
+  confirmCtx=onOk;cancelCtx=onCancel||null;
   document.getElementById('confirm-overlay').classList.add('open');
 }
-function closeConfirm(e){if(e&&e.target!==document.getElementById('confirm-overlay'))return;document.getElementById('confirm-overlay').classList.remove('open');confirmCtx=null;}
-function confirmOk(){document.getElementById('confirm-overlay').classList.remove('open');if(confirmCtx)confirmCtx();confirmCtx=null;}
+function closeConfirm(e){
+  if(e&&e.target!==document.getElementById('confirm-overlay'))return;
+  document.getElementById('confirm-overlay').classList.remove('open');
+  if(cancelCtx)cancelCtx();
+  confirmCtx=null;cancelCtx=null;
+}
+function confirmCancel(){
+  document.getElementById('confirm-overlay').classList.remove('open');
+  if(cancelCtx)cancelCtx();
+  confirmCtx=null;cancelCtx=null;
+}
+function confirmOk(){document.getElementById('confirm-overlay').classList.remove('open');if(confirmCtx)confirmCtx();confirmCtx=null;cancelCtx=null;}
 function openDiscModal(id){
   const disc=state.disciplinas.find(d=>d.id===id);if(!disc)return;
   const idx=state.disciplinas.findIndex(d=>d.id===id);
