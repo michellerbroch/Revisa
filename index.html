@@ -664,13 +664,18 @@ async function loadStateFromDB() {
   }
 
   if (data && data.data) {
+    // Dados encontrados no Supabase — carrega no estado
     Object.assign(state, data.data);
     ['revisoes','horas','muralImages','disciplinas','frases','lembretes'].forEach(k => {
       if (!Array.isArray(state[k])) state[k] = [];
     });
     try { localStorage.setItem('estudoAppV9', JSON.stringify(state)); } catch(e) {}
   } else {
-    await saveToDBNow();
+    // Nenhum dado no Supabase — só cria registro se state tiver dados reais
+    const hasData = state.revisoes.length>0 || state.horas.length>0 ||
+                    state.disciplinas.length>0 || state.frases.length>0;
+    if (hasData) await saveToDBNow();
+    // Se não tiver dados, apenas inicializa sem sobrescrever
   }
 
   renderDashboard();
@@ -682,6 +687,23 @@ async function loadStateFromDB() {
 
 async function saveToDBNow() {
   if (!currentUser) return;
+  // Proteção: nunca sobrescrever com estado completamente vazio
+  const hasData = state.revisoes.length>0 || state.horas.length>0 ||
+                  state.disciplinas.length>0 || state.frases.length>0 ||
+                  state.lembretes.length>0 || state.muralImages.length>0 ||
+                  state.provaNome || state.provaData || state.colors;
+  if (!hasData) {
+    // Verifica se já existe dado no banco antes de salvar vazio
+    const { data: existing } = await supa.from('app_state').select('data').eq('user_id', currentUser.id).maybeSingle();
+    if (existing && existing.data) {
+      const dbHasData = existing.data.revisoes?.length>0 || existing.data.horas?.length>0 ||
+                        existing.data.disciplinas?.length>0;
+      if (dbHasData) {
+        console.warn('Proteção ativada: estado local vazio não sobrescreveu dados do banco.');
+        return;
+      }
+    }
+  }
 
   const { data: existing, error: selectError } = await supa
     .from('app_state')
