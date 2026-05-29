@@ -1302,17 +1302,36 @@ let pomoState={
 };
 // Pomodoro sound via Web Audio API
 let pomoAudioCtx=null;
+let pomoActiveNodes=[];
+function pomoStopSound(){
+  pomoActiveNodes.forEach(({osc,gain})=>{
+    try{gain.gain.cancelScheduledValues(pomoAudioCtx.currentTime);
+      gain.gain.setValueAtTime(0,pomoAudioCtx.currentTime);
+      osc.stop(pomoAudioCtx.currentTime+0.05);}catch(e){}
+  });
+  pomoActiveNodes=[];
+}
 function pomoPlaySound(type){
   type=type||pomoState.sound||'beep';
   if(type==='none')return;
   try{
     if(!pomoAudioCtx)pomoAudioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    if(pomoAudioCtx.state==='suspended')pomoAudioCtx.resume();
+    pomoStopSound();
     const ctx=pomoAudioCtx;
     const now=ctx.currentTime;
+    // Padrões mais longos e marcantes
     const patterns={
-      beep:[{f:660,t:0,d:0.15},{f:880,t:0.18,d:0.2}],
-      bell:[{f:830,t:0,d:0.5},{f:1100,t:0.05,d:0.6}],
-      chime:[{f:523,t:0,d:0.3},{f:659,t:0.15,d:0.3},{f:784,t:0.3,d:0.4}]
+      beep:[
+        {f:660,t:0,d:0.25},{f:660,t:0.3,d:0.25},{f:880,t:0.6,d:0.4}
+      ],
+      bell:[
+        {f:830,t:0,d:0.8},{f:1100,t:0.3,d:0.9},{f:830,t:0.7,d:0.8}
+      ],
+      chime:[
+        {f:523,t:0,d:0.4},{f:659,t:0.25,d:0.4},{f:784,t:0.5,d:0.4},
+        {f:1047,t:0.75,d:0.6}
+      ]
     };
     const notes=patterns[type]||patterns.beep;
     notes.forEach(n=>{
@@ -1320,10 +1339,11 @@ function pomoPlaySound(type){
       osc.type=type==='bell'?'sine':'triangle';
       osc.frequency.value=n.f;
       gain.gain.setValueAtTime(0.0001,now+n.t);
-      gain.gain.exponentialRampToValueAtTime(0.3,now+n.t+0.02);
+      gain.gain.exponentialRampToValueAtTime(0.35,now+n.t+0.03);
       gain.gain.exponentialRampToValueAtTime(0.0001,now+n.t+n.d);
       osc.connect(gain);gain.connect(ctx.destination);
-      osc.start(now+n.t);osc.stop(now+n.t+n.d);
+      osc.start(now+n.t);osc.stop(now+n.t+n.d+0.05);
+      pomoActiveNodes.push({osc,gain});
     });
   }catch(e){console.log('Som indisponível:',e);}
 }
@@ -1423,10 +1443,11 @@ function pomoPhaseEnd(){
     pomoState.remaining=pomoState.focusMin*60;
   }
   pomoRender();
-  // delay alert so sound plays first (alert blocks the thread)
+  // Mostrar notificação com botão Fechar que para o som
   setTimeout(()=>{
-    alert(wasFocus?'Ciclo de foco concluído! Hora da pausa.':'Pausa terminada! Hora de focar.');
-  },300);
+    const msg=wasFocus?'Ciclo de foco concluído! Hora da pausa.':'Pausa terminada! Hora de focar.';
+    showConfirm('⏱ Pomodoro',msg,'Fechar','',()=>{pomoStopSound();},null,()=>{pomoStopSound();});
+  },200);
 }
 function pomoReset(){
   clearInterval(pomoState.interval);
@@ -1664,7 +1685,7 @@ function renderHoras(){
   drawDonut(byDisc);
   const log=document.getElementById('log-list');
   if(!state.horas.length){log.innerHTML='<div class="empty-state">Nenhum registro ainda.</div>';return;}
-  log.innerHTML=state.horas.slice(0,50).map(h=>`<div class="log-item"><div style="flex:1;"><div style="font-size:13px;font-weight:500;">${h.disc} — ${formatH(h.horas)}</div><div class="log-meta">${h.data.split('-').reverse().join('/')}</div>${h.nota?`<div class="log-note">"${h.nota}"</div>`:''}${h.fromRevisao?'<span class="log-source">via revisões</span>':''}</div><button class="icon-btn" onclick="openModal('hora',${h.id})">✎</button></div>`).join('');
+  log.innerHTML=state.horas.slice(0,50).map(h=>`<div class="log-item"><div style="flex:1;"><div style="font-size:13px;font-weight:500;">${h.disc} — ${formatH(h.horas)}</div><div class="log-meta">${h.data.split('-').reverse().join('/')}</div>${h.nota?`<div class="log-note">"${h.nota}"</div>`:''}${h.fromPomodoro?'<span class="log-source" style="background:#1a2e3a;color:#5bb8d4;border-color:#2a4a5e;">via pomodoro</span>':h.fromRevisao?'<span class="log-source">via revisões</span>':''}</div><button class="icon-btn" onclick="openModal('hora',${h.id})">✎</button></div>`).join('');
 }
 
 // ── CONFIRM / DISC MODAL ───────────────────────────────
@@ -1742,6 +1763,8 @@ function applyTheme(t){
   const btn=document.getElementById('theme-btn');
   if(btn)btn.innerHTML=THEME_SVGS[t]||THEME_SVGS.light;
   try{localStorage.setItem('revisa-theme',t);}catch(e){}
+  // Re-render donut so center text color updates
+  if(document.getElementById('donut-svg'))renderHoras();
 }
 function cycleTheme(){
   const cur=localStorage.getItem('revisa-theme')||'light';
