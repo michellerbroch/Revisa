@@ -1307,50 +1307,66 @@ let pomoState={
   interval:null, initialized:false
 };
 // Pomodoro sound via Web Audio API
+// ── ÁUDIO POMODORO ─────────────────────────────
+// iOS Safari: AudioContext DEVE ser criado durante gesto do usuário.
+// Criamos na primeira interação (Iniciar ou Testar) e reutilizamos.
 let pomoAudioCtx=null;
-let pomoActiveNodes=[];
-function pomoStopSound(){
-  pomoActiveNodes.forEach(({osc,gain})=>{
-    try{gain.gain.cancelScheduledValues(pomoAudioCtx.currentTime);
-      gain.gain.setValueAtTime(0,pomoAudioCtx.currentTime);
-      osc.stop(pomoAudioCtx.currentTime+0.05);}catch(e){}
-  });
-  pomoActiveNodes=[];
+let pomoActiveOscs=[];
+
+function pomoInitAudio(){
+  // Chame isso SEMPRE em resposta a um clique/toque do usuário
+  try{
+    if(!pomoAudioCtx||pomoAudioCtx.state==='closed'){
+      pomoAudioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    }
+    if(pomoAudioCtx.state==='suspended')pomoAudioCtx.resume();
+  }catch(e){console.log('AudioContext error:',e);}
 }
+
+function pomoStopSound(){
+  pomoActiveOscs.forEach(o=>{try{o.stop();}catch(e){}});
+  pomoActiveOscs=[];
+}
+
+function _playNote(ctx,freq,start,dur){
+  const osc=ctx.createOscillator();
+  const g=ctx.createGain();
+  osc.connect(g);g.connect(ctx.destination);
+  osc.type='sine';
+  osc.frequency.value=freq;
+  const now=ctx.currentTime;
+  g.gain.setValueAtTime(0.5,now+start);
+  g.gain.exponentialRampToValueAtTime(0.001,now+start+dur);
+  osc.start(now+start);
+  osc.stop(now+start+dur+0.05);
+  pomoActiveOscs.push(osc);
+}
+
 function pomoPlaySound(type){
   type=type||pomoState.sound||'beep';
   if(type==='none')return;
-  try{
-    if(!pomoAudioCtx)pomoAudioCtx=new (window.AudioContext||window.webkitAudioContext)();
-    const ctx=pomoAudioCtx;
-    // Resume se necessário (iOS Safari)
-    const play=()=>{
-      pomoStopSound();
-      const now=ctx.currentTime;
-      const patterns={
-        beep:[{f:523,t:0.05,d:0.3},{f:659,t:0.4,d:0.3},{f:784,t:0.75,d:0.5}],
-        bell:[{f:880,t:0.05,d:1.0},{f:1109,t:0.4,d:0.9},{f:880,t:0.9,d:0.8}],
-        chime:[{f:523,t:0.05,d:0.4},{f:659,t:0.35,d:0.4},{f:784,t:0.65,d:0.4},{f:1047,t:0.95,d:0.7}]
-      };
-      const notes=patterns[type]||patterns.beep;
-      notes.forEach(n=>{
-        const osc=ctx.createOscillator(),gain=ctx.createGain();
-        osc.type='sine';
-        osc.frequency.value=n.f;
-        gain.gain.setValueAtTime(0.001,now+n.t);
-        gain.gain.linearRampToValueAtTime(0.4,now+n.t+0.05);
-        gain.gain.linearRampToValueAtTime(0.001,now+n.t+n.d);
-        osc.connect(gain);gain.connect(ctx.destination);
-        osc.start(now+n.t);
-        osc.stop(now+n.t+n.d+0.1);
-        pomoActiveNodes.push({osc,gain});
-      });
-    };
-    if(ctx.state==='suspended'){ctx.resume().then(play);}
-    else{play();}
-  }catch(e){console.log('Som indisponível:',e);}
+  const ctx=pomoAudioCtx;
+  if(!ctx||ctx.state==='closed'){return;}
+  if(ctx.state==='suspended'){ctx.resume();}
+  pomoStopSound();
+  if(type==='beep'){
+    _playNote(ctx,523,0,0.3);
+    _playNote(ctx,659,0.35,0.3);
+    _playNote(ctx,784,0.7,0.5);
+  }else if(type==='bell'){
+    _playNote(ctx,880,0,1.0);
+    _playNote(ctx,1109,0.5,0.8);
+    _playNote(ctx,880,1.1,0.7);
+  }else if(type==='chime'){
+    _playNote(ctx,523,0,0.4);
+    _playNote(ctx,659,0.35,0.4);
+    _playNote(ctx,784,0.7,0.4);
+    _playNote(ctx,1047,1.05,0.6);
+  }
 }
+
 function pomoTestSound(){
+  pomoInitAudio(); // gesto do usuário — inicializa aqui
   const soundEl=document.getElementById('pomo-sound');
   pomoPlaySound(soundEl?soundEl.value:'beep');
 }
@@ -1405,11 +1421,7 @@ function pomoStartPause(){
     pomoState.running=false;
     clearInterval(pomoState.interval);
   }else{
-    // destravar áudio no iOS (precisa de interação do usuário)
-    try{
-      if(!pomoAudioCtx)pomoAudioCtx=new (window.AudioContext||window.webkitAudioContext)();
-      if(pomoAudioCtx.state==='suspended')pomoAudioCtx.resume();
-    }catch(e){}
+    pomoInitAudio(); // iOS: inicializar audio durante gesto do usuário
     pomoState.running=true;
     pomoState.interval=setInterval(pomoTick,1000);
   }
@@ -1684,7 +1696,7 @@ function renderHoras(){
   drawDonut(byDisc);
   const log=document.getElementById('log-list');
   if(!state.horas.length){log.innerHTML='<div class="empty-state">Nenhum registro ainda.</div>';return;}
-  log.innerHTML=state.horas.slice(0,50).map(h=>`<div class="log-item"><div style="flex:1;"><div style="font-size:13px;font-weight:500;">${h.disc} — ${formatH(h.horas)}</div><div class="log-meta">${h.data.split('-').reverse().join('/')}</div>${h.nota?`<div class="log-note">"${h.nota}"</div>`:''}${h.fromPomodoro?'<span class="log-source" style="background:#1a2e3a;color:#5bb8d4;border-color:#2a4a5e;">via pomodoro</span>':h.fromRevisao?'<span class="log-source">via revisões</span>':''}</div><button class="icon-btn" onclick="openModal('hora',${h.id})">✎</button></div>`).join('');
+  log.innerHTML=state.horas.slice(0,50).map(h=>`<div class="log-item"><div style="flex:1;"><div style="font-size:13px;font-weight:500;">${h.disc} — ${formatH(h.horas)}</div><div class="log-meta">${h.data.split('-').reverse().join('/')}</div>${h.nota?`<div class="log-note">"${h.nota}"</div>`:''}${h.fromPomodoro?'<span class="log-source" style="background:#e0f3fb;color:#1a7aad;border-color:#a8d8f0;">via pomodoro</span>':h.fromRevisao?'<span class="log-source">via revisões</span>':''}</div><button class="icon-btn" onclick="openModal('hora',${h.id})">✎</button></div>`).join('');
 }
 
 // ── CONFIRM / DISC MODAL ───────────────────────────────
