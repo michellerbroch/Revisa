@@ -212,6 +212,9 @@ button.sm{padding:5px 10px;font-size:12px;}
   .hours-layout,.prog-layout{grid-template-columns:1fr;}
   .form-row{flex-wrap:wrap;}
 }
+.donut-center-text{fill:#1a2420;}
+[data-theme="dark"] .donut-center-text{fill:#f0ece4;}
+[data-theme="sepia"] .donut-center-text{fill:#2a1f0e;}
 </style>
 </head>
 <body>
@@ -374,6 +377,56 @@ button.sm{padding:5px 10px;font-size:12px;}
 </div>
 
 <!-- MODAL CONFIRM / DISC -->
+
+<!-- ══ POMODORO ══ -->
+<div id="sec-pomodoro" class="section">
+  <div style="max-width:480px;margin:0 auto;text-align:center;">
+
+    <!-- Timer display -->
+    <div id="pomo-card" style="background:var(--bg2);border-radius:20px;padding:2.5rem 2rem;margin-bottom:1.5rem;">
+      <div id="pomo-phase" style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--blue);margin-bottom:1rem;">Foco</div>
+      <div id="pomo-time" style="font-size:64px;font-weight:700;line-height:1;color:var(--text);font-variant-numeric:tabular-nums;">25:00</div>
+      <div id="pomo-cycles" style="font-size:12px;color:var(--text2);margin-top:1rem;">Ciclo 1 de 4</div>
+
+      <div style="display:flex;gap:10px;justify-content:center;margin-top:1.5rem;">
+        <button id="pomo-start" class="primary" onclick="pomoStartPause()" style="min-width:120px;justify-content:center;font-size:15px;padding:10px 20px;">Iniciar</button>
+        <button onclick="pomoReset()" style="font-size:14px;padding:10px 16px;">Reiniciar</button>
+      </div>
+    </div>
+
+    <!-- Accumulated study time this session -->
+    <div style="background:var(--bg2);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;">
+      <div style="text-align:left;">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);">Tempo de foco acumulado</div>
+        <div id="pomo-accumulated" style="font-size:24px;font-weight:700;color:var(--gold,#c9a84c);margin-top:2px;">0min</div>
+      </div>
+      <button id="pomo-save-btn" class="primary" onclick="pomoSaveStudy()" style="font-size:13px;padding:8px 16px;" disabled>Salvar estudo</button>
+    </div>
+
+    <!-- Settings -->
+    <div class="collapsible" id="pomo-settings-collapsible" style="text-align:left;">
+      <div class="collapsible-header" onclick="toggleCollapsible('pomo-settings')">
+        <span class="collapsible-title">⚙ Configurar tempos</span>
+        <span class="collapsible-arrow" id="pomo-settings-arrow">▼</span>
+      </div>
+      <div class="collapsible-body" id="pomo-settings-body">
+        <div class="form-row">
+          <div class="fg"><span class="fg-label">Foco (min)</span><input type="number" id="pomo-focus-min" value="25" min="1" max="120"/></div>
+          <div class="fg"><span class="fg-label">Pausa curta (min)</span><input type="number" id="pomo-short-min" value="5" min="1" max="60"/></div>
+        </div>
+        <div class="form-row">
+          <div class="fg"><span class="fg-label">Pausa longa (min)</span><input type="number" id="pomo-long-min" value="15" min="1" max="60"/></div>
+          <div class="fg"><span class="fg-label">Ciclos até pausa longa</span><input type="number" id="pomo-cycles-count" value="4" min="1" max="10"/></div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;">
+          <button class="primary" onclick="pomoApplySettings()">Aplicar</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 <div class="modal-overlay" id="confirm-overlay" onclick="closeConfirm(event)">
   <div class="modal" style="max-width:360px;">
     <h3 id="confirm-title">Confirmar</h3>
@@ -393,6 +446,7 @@ button.sm{padding:5px 10px;font-size:12px;}
   <button class="nav-btn" onclick="showSection('revisoes',this)">Revisões</button>
   <button class="nav-btn" onclick="showSection('horas',this)">Horas</button>
   <button class="nav-btn" onclick="showSection('progresso',this)">Progresso</button>
+  <button class="nav-btn" onclick="showSection('pomodoro',this)">Pomodoro</button>
   <div style="margin-left:auto;display:flex;align-items:center;gap:4px;">
     <button id="theme-btn" onclick="cycleTheme()" title="Alternar tema" style="background:transparent;border-color:transparent;padding:4px 6px;display:flex;align-items:center;"></button>
     <button onclick="signOut()" style="font-size:12px;color:var(--text2);background:transparent;border-color:transparent;">Sair</button>
@@ -502,24 +556,8 @@ button.sm{padding:5px 10px;font-size:12px;}
 <!-- ══ HORAS ══ -->
 <div id="sec-horas" class="section">
 
-  <div class="collapsible" id="hora-collapsible">
-    <div class="collapsible-header" onclick="toggleCollapsible('hora')">
-      <span class="collapsible-title">+ Registrar horas</span>
-      <span class="collapsible-arrow" id="hora-arrow">▼</span>
-    </div>
-    <div class="collapsible-body" id="hora-body">
-      <div class="form-row">
-        <div class="fg" style="width:150px;"><span class="fg-label">Disciplina</span><input type="text" id="h-disc"/></div>
-        <div class="fg grow"><span class="fg-label">Anotação</span><input type="text" id="h-nota"/></div>
-      </div>
-      <div class="form-row">
-        <div class="fg" style="width:90px;"><span class="fg-label">Horas</span><input type="number" id="h-horas" min="0" step="0.5"/></div>
-        <div class="fg grow"><span class="fg-label">Data</span><input type="date" id="h-data"/></div>
-      </div>
-      <div style="display:flex;justify-content:flex-end;">
-        <button class="primary" onclick="addHora()">Registrar</button>
-      </div>
-    </div>
+  <div style="font-size:12px;color:var(--text2);margin-bottom:1rem;padding:10px 12px;background:var(--bg2);border-radius:var(--radius-sm);">
+    As horas são registradas automaticamente ao concluir revisões ou usar o Pomodoro.
   </div>
 
   <div class="hours-top">
@@ -760,7 +798,7 @@ function formatH(h){if(!h||h<=0)return '0h';const hrs=Math.floor(h),mins=Math.ro
 
 // ── NAV ────────────────────────────────────────────────
 function collapseAll(){
-  ['rev','hora','disc'].forEach(key=>{
+  ['rev','disc','pomo-settings'].forEach(key=>{
     const body=document.getElementById(key+'-body');
     const arrow=document.getElementById(key+'-arrow');
     if(body){body.classList.remove('open');}
@@ -777,6 +815,7 @@ function showSection(s,btn){
   if(s==='horas')renderHoras();
   if(s==='revisoes'){populateDiscSel();renderTimeline();}
   if(s==='progresso')renderProgresso();
+  if(s==='pomodoro')pomoInit();
 }
 
 // ── COLLAPSIBLE ────────────────────────────────────────
@@ -1188,6 +1227,166 @@ function addRevisao(){
   document.getElementById('rev-tema').value='';document.getElementById('rev-disc-sel').value='';
   document.getElementById('rev-art-de').innerHTML='<option value="">—</option>';document.getElementById('rev-art-ate').innerHTML='<option value="">—</option>';
   document.getElementById('rev-horas').value='';
+// ── POMODORO ──────────────────────────────────────────
+let pomoState={
+  running:false, phase:'focus', // focus | short | long
+  remaining:25*60, cycle:1,
+  focusMin:25, shortMin:5, longMin:15, cyclesCount:4,
+  accumulatedSec:0, // total focus seconds this session
+  interval:null, initialized:false
+};
+function pomoInit(){
+  if(!pomoState.initialized){
+    pomoApplySettings();
+    pomoState.initialized=true;
+  }
+  pomoRender();
+}
+function pomoApplySettings(){
+  pomoState.focusMin=parseInt(document.getElementById('pomo-focus-min').value)||25;
+  pomoState.shortMin=parseInt(document.getElementById('pomo-short-min').value)||5;
+  pomoState.longMin=parseInt(document.getElementById('pomo-long-min').value)||15;
+  pomoState.cyclesCount=parseInt(document.getElementById('pomo-cycles-count').value)||4;
+  if(!pomoState.running){
+    pomoState.remaining=pomoState.focusMin*60;
+    pomoState.phase='focus';
+    pomoState.cycle=1;
+  }
+  pomoRender();
+}
+function pomoRender(){
+  const m=Math.floor(pomoState.remaining/60), s=pomoState.remaining%60;
+  document.getElementById('pomo-time').textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  const phaseLabels={focus:'Foco',short:'Pausa curta',long:'Pausa longa'};
+  document.getElementById('pomo-phase').textContent=phaseLabels[pomoState.phase];
+  const phaseColors={focus:'var(--blue)',short:'#1D9E75',long:'#7F77DD'};
+  document.getElementById('pomo-phase').style.color=phaseColors[pomoState.phase];
+  document.getElementById('pomo-cycles').textContent=`Ciclo ${pomoState.cycle} de ${pomoState.cyclesCount}`;
+  document.getElementById('pomo-start').textContent=pomoState.running?'Pausar':'Iniciar';
+  // accumulated
+  const accMin=Math.floor(pomoState.accumulatedSec/60);
+  document.getElementById('pomo-accumulated').textContent=accMin>0?formatH(accMin/60):'0min';
+  document.getElementById('pomo-save-btn').disabled=pomoState.accumulatedSec<60;
+}
+function pomoStartPause(){
+  if(pomoState.running){
+    pomoState.running=false;
+    clearInterval(pomoState.interval);
+  }else{
+    pomoState.running=true;
+    pomoState.interval=setInterval(pomoTick,1000);
+  }
+  pomoRender();
+}
+function pomoTick(){
+  if(pomoState.remaining>0){
+    pomoState.remaining--;
+    if(pomoState.phase==='focus')pomoState.accumulatedSec++;
+    pomoRender();
+  }else{
+    pomoPhaseEnd();
+  }
+}
+function pomoPhaseEnd(){
+  clearInterval(pomoState.interval);
+  pomoState.running=false;
+  // sound/vibration
+  try{if(navigator.vibrate)navigator.vibrate([200,100,200]);}catch(e){}
+  if(pomoState.phase==='focus'){
+    // after focus → break
+    if(pomoState.cycle>=pomoState.cyclesCount){
+      pomoState.phase='long';
+      pomoState.remaining=pomoState.longMin*60;
+    }else{
+      pomoState.phase='short';
+      pomoState.remaining=pomoState.shortMin*60;
+    }
+  }else{
+    // after break → next focus
+    if(pomoState.phase==='long'){pomoState.cycle=1;}
+    else{pomoState.cycle++;}
+    pomoState.phase='focus';
+    pomoState.remaining=pomoState.focusMin*60;
+  }
+  pomoRender();
+  // auto-notify
+  alert(pomoState.phase==='focus'?'Pausa terminada! Hora de focar.':'Ciclo de foco concluído! Hora da pausa.');
+}
+function pomoReset(){
+  clearInterval(pomoState.interval);
+  pomoState.running=false;
+  pomoState.phase='focus';
+  pomoState.remaining=pomoState.focusMin*60;
+  pomoState.cycle=1;
+  pomoRender();
+}
+function pomoSaveStudy(){
+  const totalMin=Math.round(pomoState.accumulatedSec/60);
+  if(totalMin<1){alert('Estude pelo menos 1 minuto antes de salvar.');return;}
+  // pause timer
+  if(pomoState.running){pomoState.running=false;clearInterval(pomoState.interval);pomoRender();}
+  // open revision form modal with hours pre-filled
+  pomoOpenSaveModal(totalMin);
+}
+function pomoOpenSaveModal(totalMin){
+  const discOpts=state.disciplinas.map(d=>`<option value="${d.id}">${d.nome}</option>`).join('');
+  const extraHtml=`
+    <div style="text-align:left;">
+      <div style="font-size:13px;margin-bottom:12px;padding:8px 10px;background:var(--blue-bg);border-radius:var(--radius-sm);color:var(--text);">
+        ⏱ Tempo de foco: <strong>${formatH(totalMin/60)}</strong> — será registrado automaticamente
+      </div>
+      <div class="fg" style="margin-bottom:10px;"><span class="fg-label">Conteúdo estudado (livre)</span><input type="text" id="pomo-tema" style="width:100%;"/></div>
+      <div class="fg" style="margin-bottom:10px;"><span class="fg-label">Disciplina</span>
+        <select id="pomo-disc-sel" onchange="pomoModalDiscChange()" style="width:100%;"><option value="">— selecionar —</option>${discOpts}</select>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:4px;">
+        <div class="fg" style="flex:1;"><span class="fg-label">Do art.</span><select id="pomo-art-de" onchange="pomoModalArtChange()" style="width:100%;"><option value="">—</option></select></div>
+        <div class="fg" style="flex:1;"><span class="fg-label">Ao art.</span><select id="pomo-art-ate" style="width:100%;"><option value="">—</option></select></div>
+      </div>
+    </div>`;
+  showConfirm('Salvar estudo do Pomodoro','Registre o que você estudou:','Salvar','',
+    ()=>{pomoConfirmSave(totalMin);}, extraHtml);
+}
+function pomoModalDiscChange(){
+  const discId=parseInt(document.getElementById('pomo-disc-sel').value)||null;
+  const disc=discId?state.disciplinas.find(d=>d.id===discId):null;
+  const deEl=document.getElementById('pomo-art-de'),ateEl=document.getElementById('pomo-art-ate');
+  deEl.innerHTML='<option value="">—</option>';ateEl.innerHTML='<option value="">—</option>';
+  if(disc){for(let i=1;i<=disc.total;i++){deEl.innerHTML+=`<option value="${i}">${i}</option>`;ateEl.innerHTML+=`<option value="${i}">${i}</option>`;}}
+}
+function pomoModalArtChange(){
+  const de=parseInt(document.getElementById('pomo-art-de').value)||0;
+  const discId=parseInt(document.getElementById('pomo-disc-sel').value)||null;
+  const disc=discId?state.disciplinas.find(d=>d.id===discId):null;
+  const ateEl=document.getElementById('pomo-art-ate');
+  ateEl.innerHTML='<option value="">—</option>';
+  if(disc&&de){for(let i=de;i<=disc.total;i++)ateEl.innerHTML+=`<option value="${i}">${i}</option>`;ateEl.value=String(de);}
+}
+function pomoConfirmSave(totalMin){
+  const tema=(document.getElementById('pomo-tema')||{}).value?.trim()||'';
+  const discId=parseInt((document.getElementById('pomo-disc-sel')||{}).value)||null;
+  const artDe=parseInt((document.getElementById('pomo-art-de')||{}).value)||null;
+  const artAte=parseInt((document.getElementById('pomo-art-ate')||{}).value)||null;
+  const disc=discId?state.disciplinas.find(d=>d.id===discId):null;
+  const discNome=disc?disc.nome:'';
+  if(!tema&&!discNome){alert('Preencha o conteúdo estudado ou selecione uma disciplina.');return;}
+  const artAteReal=artAte||artDe;
+  const data=todayStr();
+  const id=Date.now();
+  const artigos=artDe?getArtigosRange(artDe,artAteReal):[];
+  if(disc&&artigos.length)artigos.forEach(a=>{if(!disc.artigos.includes(a))disc.artigos.push(a);});
+  // create revision entry (same as addRevisao)
+  state.revisoes.unshift({id,tema,disc:discNome,discNome,discId,artDe,artAte:artAteReal,artigos,data,revDates:addRevDates(data),done:[false,false,false]});
+  // create hours entry with pomodoro time
+  state.horas.unshift({id:id+1,data,disc:discNome||(tema||'Estudo'),horas:totalMin/60,nota:buildChipLabel({tema,discNome,artDe,artAte:artAteReal}),fromRevisao:true,fromPomodoro:true});
+  save();
+  renderTimeline();renderProgresso();renderDashboard();
+  // reset pomodoro accumulated
+  pomoState.accumulatedSec=0;
+  pomoRender();
+  alert('Estudo registrado com sucesso! Veja em Revisões e Horas.');
+}
+
 // ── TEMA ──────────────────────────────────────
 const THEMES=['light','dark','sepia'];
 const THEME_SVGS={
@@ -1303,17 +1502,7 @@ function renderProgresso(){
 }
 
 // ── HORAS ─────────────────────────────────────────────
-function addHora(){
-  const data=document.getElementById('h-data').value||todayStr();
-  const disc=document.getElementById('h-disc').value.trim();
-  const horas=parseFloat(document.getElementById('h-horas').value);
-  const nota=document.getElementById('h-nota').value.trim();
-  if(!disc){alert('Informe a disciplina.');return;}
-  if(isNaN(horas)||horas<=0){alert('Informe horas válidas.');return;}
-  state.horas.unshift({id:Date.now(),data,disc,horas,nota});
-  save();renderHoras();renderDashboard();
-  document.getElementById('h-disc').value='';document.getElementById('h-horas').value='';document.getElementById('h-nota').value='';document.getElementById('h-data').value=todayStr();
-}
+function addHora(){/* formulário removido — horas vêm de revisões e pomodoro */}
 function startOfWeek(){
   const d=new Date();d.setHours(0,0,0,0);
   const dow=d.getDay(); // 0=Sun
@@ -1349,11 +1538,8 @@ function drawDonut(byDisc){
     angle+=sweep;
   });
   // center text
-  const _theme=document.documentElement.getAttribute("data-theme")||"light";
-  const _themeMap={"light":"#1a2420","dark":"#f0ece4","sepia":"#2a1f0e","":"#1a2420"};
-  const textFill=_themeMap[_theme]||"#1a2420";
-  html+=`<text x="${cx}" y="${cy-7}" text-anchor="middle" font-size="17" font-weight="600" fill="${textFill}">${formatH(total)}</text>`;
-  html+=`<text x="${cx}" y="${cy+10}" text-anchor="middle" font-size="10" fill="${textFill}" opacity="0.5">total</text>`;
+  html+=`<text x="${cx}" y="${cy-7}" text-anchor="middle" font-size="17" font-weight="600" class="donut-center-text">${formatH(total)}</text>`;
+  html+=`<text x="${cx}" y="${cy+10}" text-anchor="middle" font-size="10" class="donut-center-text" opacity="0.5">total</text>`;
   svg.innerHTML=html;
   legend.innerHTML=entries.map(([disc,val],i)=>`
     <div class="donut-legend-item">
@@ -1443,6 +1629,166 @@ function clearHorasTudo(){state.horas=[];save();renderHoras();renderDashboard();
 
 // ── INIT ──────────────────────────────────────────────
 
+// ── POMODORO ──────────────────────────────────────────
+let pomoState={
+  running:false, phase:'focus', // focus | short | long
+  remaining:25*60, cycle:1,
+  focusMin:25, shortMin:5, longMin:15, cyclesCount:4,
+  accumulatedSec:0, // total focus seconds this session
+  interval:null, initialized:false
+};
+function pomoInit(){
+  if(!pomoState.initialized){
+    pomoApplySettings();
+    pomoState.initialized=true;
+  }
+  pomoRender();
+}
+function pomoApplySettings(){
+  pomoState.focusMin=parseInt(document.getElementById('pomo-focus-min').value)||25;
+  pomoState.shortMin=parseInt(document.getElementById('pomo-short-min').value)||5;
+  pomoState.longMin=parseInt(document.getElementById('pomo-long-min').value)||15;
+  pomoState.cyclesCount=parseInt(document.getElementById('pomo-cycles-count').value)||4;
+  if(!pomoState.running){
+    pomoState.remaining=pomoState.focusMin*60;
+    pomoState.phase='focus';
+    pomoState.cycle=1;
+  }
+  pomoRender();
+}
+function pomoRender(){
+  const m=Math.floor(pomoState.remaining/60), s=pomoState.remaining%60;
+  document.getElementById('pomo-time').textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  const phaseLabels={focus:'Foco',short:'Pausa curta',long:'Pausa longa'};
+  document.getElementById('pomo-phase').textContent=phaseLabels[pomoState.phase];
+  const phaseColors={focus:'var(--blue)',short:'#1D9E75',long:'#7F77DD'};
+  document.getElementById('pomo-phase').style.color=phaseColors[pomoState.phase];
+  document.getElementById('pomo-cycles').textContent=`Ciclo ${pomoState.cycle} de ${pomoState.cyclesCount}`;
+  document.getElementById('pomo-start').textContent=pomoState.running?'Pausar':'Iniciar';
+  // accumulated
+  const accMin=Math.floor(pomoState.accumulatedSec/60);
+  document.getElementById('pomo-accumulated').textContent=accMin>0?formatH(accMin/60):'0min';
+  document.getElementById('pomo-save-btn').disabled=pomoState.accumulatedSec<60;
+}
+function pomoStartPause(){
+  if(pomoState.running){
+    pomoState.running=false;
+    clearInterval(pomoState.interval);
+  }else{
+    pomoState.running=true;
+    pomoState.interval=setInterval(pomoTick,1000);
+  }
+  pomoRender();
+}
+function pomoTick(){
+  if(pomoState.remaining>0){
+    pomoState.remaining--;
+    if(pomoState.phase==='focus')pomoState.accumulatedSec++;
+    pomoRender();
+  }else{
+    pomoPhaseEnd();
+  }
+}
+function pomoPhaseEnd(){
+  clearInterval(pomoState.interval);
+  pomoState.running=false;
+  // sound/vibration
+  try{if(navigator.vibrate)navigator.vibrate([200,100,200]);}catch(e){}
+  if(pomoState.phase==='focus'){
+    // after focus → break
+    if(pomoState.cycle>=pomoState.cyclesCount){
+      pomoState.phase='long';
+      pomoState.remaining=pomoState.longMin*60;
+    }else{
+      pomoState.phase='short';
+      pomoState.remaining=pomoState.shortMin*60;
+    }
+  }else{
+    // after break → next focus
+    if(pomoState.phase==='long'){pomoState.cycle=1;}
+    else{pomoState.cycle++;}
+    pomoState.phase='focus';
+    pomoState.remaining=pomoState.focusMin*60;
+  }
+  pomoRender();
+  // auto-notify
+  alert(pomoState.phase==='focus'?'Pausa terminada! Hora de focar.':'Ciclo de foco concluído! Hora da pausa.');
+}
+function pomoReset(){
+  clearInterval(pomoState.interval);
+  pomoState.running=false;
+  pomoState.phase='focus';
+  pomoState.remaining=pomoState.focusMin*60;
+  pomoState.cycle=1;
+  pomoRender();
+}
+function pomoSaveStudy(){
+  const totalMin=Math.round(pomoState.accumulatedSec/60);
+  if(totalMin<1){alert('Estude pelo menos 1 minuto antes de salvar.');return;}
+  // pause timer
+  if(pomoState.running){pomoState.running=false;clearInterval(pomoState.interval);pomoRender();}
+  // open revision form modal with hours pre-filled
+  pomoOpenSaveModal(totalMin);
+}
+function pomoOpenSaveModal(totalMin){
+  const discOpts=state.disciplinas.map(d=>`<option value="${d.id}">${d.nome}</option>`).join('');
+  const extraHtml=`
+    <div style="text-align:left;">
+      <div style="font-size:13px;margin-bottom:12px;padding:8px 10px;background:var(--blue-bg);border-radius:var(--radius-sm);color:var(--text);">
+        ⏱ Tempo de foco: <strong>${formatH(totalMin/60)}</strong> — será registrado automaticamente
+      </div>
+      <div class="fg" style="margin-bottom:10px;"><span class="fg-label">Conteúdo estudado (livre)</span><input type="text" id="pomo-tema" style="width:100%;"/></div>
+      <div class="fg" style="margin-bottom:10px;"><span class="fg-label">Disciplina</span>
+        <select id="pomo-disc-sel" onchange="pomoModalDiscChange()" style="width:100%;"><option value="">— selecionar —</option>${discOpts}</select>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:4px;">
+        <div class="fg" style="flex:1;"><span class="fg-label">Do art.</span><select id="pomo-art-de" onchange="pomoModalArtChange()" style="width:100%;"><option value="">—</option></select></div>
+        <div class="fg" style="flex:1;"><span class="fg-label">Ao art.</span><select id="pomo-art-ate" style="width:100%;"><option value="">—</option></select></div>
+      </div>
+    </div>`;
+  showConfirm('Salvar estudo do Pomodoro','Registre o que você estudou:','Salvar','',
+    ()=>{pomoConfirmSave(totalMin);}, extraHtml);
+}
+function pomoModalDiscChange(){
+  const discId=parseInt(document.getElementById('pomo-disc-sel').value)||null;
+  const disc=discId?state.disciplinas.find(d=>d.id===discId):null;
+  const deEl=document.getElementById('pomo-art-de'),ateEl=document.getElementById('pomo-art-ate');
+  deEl.innerHTML='<option value="">—</option>';ateEl.innerHTML='<option value="">—</option>';
+  if(disc){for(let i=1;i<=disc.total;i++){deEl.innerHTML+=`<option value="${i}">${i}</option>`;ateEl.innerHTML+=`<option value="${i}">${i}</option>`;}}
+}
+function pomoModalArtChange(){
+  const de=parseInt(document.getElementById('pomo-art-de').value)||0;
+  const discId=parseInt(document.getElementById('pomo-disc-sel').value)||null;
+  const disc=discId?state.disciplinas.find(d=>d.id===discId):null;
+  const ateEl=document.getElementById('pomo-art-ate');
+  ateEl.innerHTML='<option value="">—</option>';
+  if(disc&&de){for(let i=de;i<=disc.total;i++)ateEl.innerHTML+=`<option value="${i}">${i}</option>`;ateEl.value=String(de);}
+}
+function pomoConfirmSave(totalMin){
+  const tema=(document.getElementById('pomo-tema')||{}).value?.trim()||'';
+  const discId=parseInt((document.getElementById('pomo-disc-sel')||{}).value)||null;
+  const artDe=parseInt((document.getElementById('pomo-art-de')||{}).value)||null;
+  const artAte=parseInt((document.getElementById('pomo-art-ate')||{}).value)||null;
+  const disc=discId?state.disciplinas.find(d=>d.id===discId):null;
+  const discNome=disc?disc.nome:'';
+  if(!tema&&!discNome){alert('Preencha o conteúdo estudado ou selecione uma disciplina.');return;}
+  const artAteReal=artAte||artDe;
+  const data=todayStr();
+  const id=Date.now();
+  const artigos=artDe?getArtigosRange(artDe,artAteReal):[];
+  if(disc&&artigos.length)artigos.forEach(a=>{if(!disc.artigos.includes(a))disc.artigos.push(a);});
+  // create revision entry (same as addRevisao)
+  state.revisoes.unshift({id,tema,disc:discNome,discNome,discId,artDe,artAte:artAteReal,artigos,data,revDates:addRevDates(data),done:[false,false,false]});
+  // create hours entry with pomodoro time
+  state.horas.unshift({id:id+1,data,disc:discNome||(tema||'Estudo'),horas:totalMin/60,nota:buildChipLabel({tema,discNome,artDe,artAte:artAteReal}),fromRevisao:true,fromPomodoro:true});
+  save();
+  renderTimeline();renderProgresso();renderDashboard();
+  // reset pomodoro accumulated
+  pomoState.accumulatedSec=0;
+  pomoRender();
+  alert('Estudo registrado com sucesso! Veja em Revisões e Horas.');
+}
+
 // ── TEMA ──────────────────────────────────────
 const THEMES=['light','dark','sepia'];
 const THEME_SVGS={
@@ -1462,7 +1808,6 @@ function cycleTheme(){
 }
 (function(){applyTheme(localStorage.getItem('revisa-theme')||'light');})();
 document.getElementById('rev-data').value=todayStr();
-document.getElementById('h-data').value=todayStr();
 checkSession();
 // live countdown update every minute
 setInterval(renderCountdown,60000);
