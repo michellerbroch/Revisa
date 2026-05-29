@@ -1291,6 +1291,7 @@ function addRevisao(){
   document.getElementById('rev-tema').value='';document.getElementById('rev-disc-sel').value='';
   document.getElementById('rev-art-de').innerHTML='<option value="">—</option>';document.getElementById('rev-art-ate').innerHTML='<option value="">—</option>';
   document.getElementById('rev-horas').value='';
+}
 // ── POMODORO ──────────────────────────────────────────
 let pomoState={
   running:false, phase:'focus', // focus | short | long
@@ -1354,6 +1355,13 @@ function pomoApplySettings(){
     pomoState.cycle=1;
   }
   pomoRender();
+  // recolher a aba de configurações e dar feedback
+  const body=document.getElementById('pomo-settings-body');
+  const arrow=document.getElementById('pomo-settings-arrow');
+  if(body)body.classList.remove('open');
+  if(arrow)arrow.classList.remove('open');
+  const btn=event&&event.target;
+  if(btn){const orig=btn.textContent;btn.textContent='✓ Aplicado';setTimeout(()=>{btn.textContent=orig;},1200);}
 }
 function pomoRender(){
   const m=Math.floor(pomoState.remaining/60), s=pomoState.remaining%60;
@@ -1374,6 +1382,11 @@ function pomoStartPause(){
     pomoState.running=false;
     clearInterval(pomoState.interval);
   }else{
+    // destravar áudio no iOS (precisa de interação do usuário)
+    try{
+      if(!pomoAudioCtx)pomoAudioCtx=new (window.AudioContext||window.webkitAudioContext)();
+      if(pomoAudioCtx.state==='suspended')pomoAudioCtx.resume();
+    }catch(e){}
     pomoState.running=true;
     pomoState.interval=setInterval(pomoTick,1000);
   }
@@ -1391,11 +1404,11 @@ function pomoTick(){
 function pomoPhaseEnd(){
   clearInterval(pomoState.interval);
   pomoState.running=false;
-  // sound/vibration
+  // sound + vibration FIRST
   try{if(navigator.vibrate)navigator.vibrate([200,100,200]);}catch(e){}
   pomoPlaySound();
-  if(pomoState.phase==='focus'){
-    // after focus → break
+  const wasFocus=pomoState.phase==='focus';
+  if(wasFocus){
     if(pomoState.cycle>=pomoState.cyclesCount){
       pomoState.phase='long';
       pomoState.remaining=pomoState.longMin*60;
@@ -1404,15 +1417,16 @@ function pomoPhaseEnd(){
       pomoState.remaining=pomoState.shortMin*60;
     }
   }else{
-    // after break → next focus
     if(pomoState.phase==='long'){pomoState.cycle=1;}
     else{pomoState.cycle++;}
     pomoState.phase='focus';
     pomoState.remaining=pomoState.focusMin*60;
   }
   pomoRender();
-  // auto-notify
-  alert(pomoState.phase==='focus'?'Pausa terminada! Hora de focar.':'Ciclo de foco concluído! Hora da pausa.');
+  // delay alert so sound plays first (alert blocks the thread)
+  setTimeout(()=>{
+    alert(wasFocus?'Ciclo de foco concluído! Hora da pausa.':'Pausa terminada! Hora de focar.');
+  },300);
 }
 function pomoReset(){
   clearInterval(pomoState.interval);
@@ -1489,26 +1503,7 @@ function pomoConfirmSave(totalMin){
   // registro concluído sem alert extra
 }
 
-// ── TEMA ──────────────────────────────────────
-const THEMES=['light','dark','sepia'];
-const THEME_SVGS={
-  light:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`,
-  dark:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`,
-  sepia:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>`
-};
-function applyTheme(t){
-  document.documentElement.setAttribute('data-theme',t==='light'?'':t);
-  const btn=document.getElementById('theme-btn');
-  if(btn)btn.innerHTML=THEME_SVGS[t]||THEME_SVGS.light;
-  try{localStorage.setItem('revisa-theme',t);}catch(e){}
-}
-function cycleTheme(){
-  const cur=localStorage.getItem('revisa-theme')||'light';
-  applyTheme(THEMES[(THEMES.indexOf(cur)+1)%THEMES.length]);
-}
-(function(){applyTheme(localStorage.getItem('revisa-theme')||'light');})();
-document.getElementById('rev-data').value=todayStr();
-}
+
 
 function toggleDone(id,typeIdx){
   const r=state.revisoes.find(x=>x.id===id);if(!r)return;
@@ -1640,8 +1635,9 @@ function drawDonut(byDisc){
     angle+=sweep;
   });
   // center text
-  const _theme=document.documentElement.getAttribute("data-theme")||"light";
-  const _fillMap={"light":"#1a2420","":"#1a2420","dark":"#f0ece4","sepia":"#2a1f0e"};
+  let _theme="light";
+  try{_theme=localStorage.getItem("revisa-theme")||"light";}catch(e){}
+  const _fillMap={"light":"#1a2420","dark":"#f0ece4","sepia":"#2a1f0e"};
   const tFill=_fillMap[_theme]||"#1a2420";
   html+=`<text x="${cx}" y="${cy-7}" text-anchor="middle" font-size="17" font-weight="600" fill="${tFill}">${formatH(total)}</text>`;
   html+=`<text x="${cx}" y="${cy+10}" text-anchor="middle" font-size="10" fill="${tFill}" opacity="0.55">total</text>`;
@@ -1733,204 +1729,6 @@ function clearHorasRevisao(){state.horas=state.horas.filter(h=>!h.fromRevisao);s
 function clearHorasTudo(){state.horas=[];save();renderHoras();renderDashboard();document.getElementById('confirm-overlay').classList.remove('open');}
 
 // ── INIT ──────────────────────────────────────────────
-
-// ── POMODORO ──────────────────────────────────────────
-let pomoState={
-  running:false, phase:'focus', // focus | short | long
-  remaining:25*60, cycle:1,
-  focusMin:25, shortMin:5, longMin:15, cyclesCount:4,
-  accumulatedSec:0, sound:'beep',
-  interval:null, initialized:false
-};
-// Pomodoro sound via Web Audio API
-let pomoAudioCtx=null;
-function pomoPlaySound(type){
-  type=type||pomoState.sound||'beep';
-  if(type==='none')return;
-  try{
-    if(!pomoAudioCtx)pomoAudioCtx=new (window.AudioContext||window.webkitAudioContext)();
-    const ctx=pomoAudioCtx;
-    const now=ctx.currentTime;
-    const patterns={
-      beep:[{f:660,t:0,d:0.15},{f:880,t:0.18,d:0.2}],
-      bell:[{f:830,t:0,d:0.5},{f:1100,t:0.05,d:0.6}],
-      chime:[{f:523,t:0,d:0.3},{f:659,t:0.15,d:0.3},{f:784,t:0.3,d:0.4}]
-    };
-    const notes=patterns[type]||patterns.beep;
-    notes.forEach(n=>{
-      const osc=ctx.createOscillator(),gain=ctx.createGain();
-      osc.type=type==='bell'?'sine':'triangle';
-      osc.frequency.value=n.f;
-      gain.gain.setValueAtTime(0.0001,now+n.t);
-      gain.gain.exponentialRampToValueAtTime(0.3,now+n.t+0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001,now+n.t+n.d);
-      osc.connect(gain);gain.connect(ctx.destination);
-      osc.start(now+n.t);osc.stop(now+n.t+n.d);
-    });
-  }catch(e){console.log('Som indisponível:',e);}
-}
-function pomoTestSound(){
-  const soundEl=document.getElementById('pomo-sound');
-  pomoPlaySound(soundEl?soundEl.value:'beep');
-}
-function pomoClearAccumulated(){
-  if(pomoState.accumulatedSec<60){pomoState.accumulatedSec=0;pomoRender();return;}
-  showConfirm('Limpar tempo acumulado','Deseja zerar o tempo de foco acumulado nesta sessão?','Limpar','',
-    ()=>{pomoState.accumulatedSec=0;pomoRender();});
-}
-function pomoInit(){
-  if(!pomoState.initialized){
-    pomoApplySettings();
-    pomoState.initialized=true;
-  }
-  pomoRender();
-}
-function pomoApplySettings(){
-  pomoState.focusMin=parseInt(document.getElementById('pomo-focus-min').value)||25;
-  pomoState.shortMin=parseInt(document.getElementById('pomo-short-min').value)||5;
-  pomoState.longMin=parseInt(document.getElementById('pomo-long-min').value)||15;
-  pomoState.cyclesCount=parseInt(document.getElementById('pomo-cycles-count').value)||4;
-  const soundEl=document.getElementById('pomo-sound');if(soundEl)pomoState.sound=soundEl.value;
-  if(!pomoState.running){
-    pomoState.remaining=pomoState.focusMin*60;
-    pomoState.phase='focus';
-    pomoState.cycle=1;
-  }
-  pomoRender();
-}
-function pomoRender(){
-  const m=Math.floor(pomoState.remaining/60), s=pomoState.remaining%60;
-  document.getElementById('pomo-time').textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-  const phaseLabels={focus:'Foco',short:'Pausa curta',long:'Pausa longa'};
-  document.getElementById('pomo-phase').textContent=phaseLabels[pomoState.phase];
-  const phaseColors={focus:'var(--blue)',short:'#1D9E75',long:'#7F77DD'};
-  document.getElementById('pomo-phase').style.color=phaseColors[pomoState.phase];
-  document.getElementById('pomo-cycles').textContent=`Ciclo ${pomoState.cycle} de ${pomoState.cyclesCount}`;
-  document.getElementById('pomo-start').textContent=pomoState.running?'Pausar':'Iniciar';
-  // accumulated
-  const accMin=Math.floor(pomoState.accumulatedSec/60);
-  document.getElementById('pomo-accumulated').textContent=accMin>0?formatH(accMin/60):'0min';
-  document.getElementById('pomo-save-btn').disabled=pomoState.accumulatedSec<60;
-}
-function pomoStartPause(){
-  if(pomoState.running){
-    pomoState.running=false;
-    clearInterval(pomoState.interval);
-  }else{
-    pomoState.running=true;
-    pomoState.interval=setInterval(pomoTick,1000);
-  }
-  pomoRender();
-}
-function pomoTick(){
-  if(pomoState.remaining>0){
-    pomoState.remaining--;
-    if(pomoState.phase==='focus')pomoState.accumulatedSec++;
-    pomoRender();
-  }else{
-    pomoPhaseEnd();
-  }
-}
-function pomoPhaseEnd(){
-  clearInterval(pomoState.interval);
-  pomoState.running=false;
-  // sound/vibration
-  try{if(navigator.vibrate)navigator.vibrate([200,100,200]);}catch(e){}
-  pomoPlaySound();
-  if(pomoState.phase==='focus'){
-    // after focus → break
-    if(pomoState.cycle>=pomoState.cyclesCount){
-      pomoState.phase='long';
-      pomoState.remaining=pomoState.longMin*60;
-    }else{
-      pomoState.phase='short';
-      pomoState.remaining=pomoState.shortMin*60;
-    }
-  }else{
-    // after break → next focus
-    if(pomoState.phase==='long'){pomoState.cycle=1;}
-    else{pomoState.cycle++;}
-    pomoState.phase='focus';
-    pomoState.remaining=pomoState.focusMin*60;
-  }
-  pomoRender();
-  // auto-notify
-  alert(pomoState.phase==='focus'?'Pausa terminada! Hora de focar.':'Ciclo de foco concluído! Hora da pausa.');
-}
-function pomoReset(){
-  clearInterval(pomoState.interval);
-  pomoState.running=false;
-  pomoState.phase='focus';
-  pomoState.remaining=pomoState.focusMin*60;
-  pomoState.cycle=1;
-  pomoRender();
-}
-function pomoSaveStudy(){
-  const totalMin=Math.round(pomoState.accumulatedSec/60);
-  if(totalMin<1){alert('Estude pelo menos 1 minuto antes de salvar.');return;}
-  // pause timer
-  if(pomoState.running){pomoState.running=false;clearInterval(pomoState.interval);pomoRender();}
-  // open revision form modal with hours pre-filled
-  pomoOpenSaveModal(totalMin);
-}
-function pomoOpenSaveModal(totalMin){
-  const discOpts=state.disciplinas.map(d=>`<option value="${d.id}">${d.nome}</option>`).join('');
-  const extraHtml=`
-    <div style="text-align:left;">
-      <div style="font-size:13px;margin-bottom:12px;padding:8px 10px;background:var(--blue-bg);border-radius:var(--radius-sm);color:var(--text);">
-        ⏱ Tempo de foco: <strong>${formatH(totalMin/60)}</strong>
-      </div>
-      <div class="fg" style="margin-bottom:10px;"><span class="fg-label">Conteúdo estudado</span><input type="text" id="pomo-tema" style="width:100%;"/></div>
-      <div class="fg" style="margin-bottom:10px;"><span class="fg-label">Disciplina</span>
-        <select id="pomo-disc-sel" onchange="pomoModalDiscChange()" style="width:100%;"><option value="">— selecionar —</option>${discOpts}</select>
-      </div>
-      <div style="display:flex;gap:8px;margin-bottom:4px;">
-        <div class="fg" style="flex:1;"><span class="fg-label">Do art.</span><select id="pomo-art-de" onchange="pomoModalArtChange()" style="width:100%;"><option value="">—</option></select></div>
-        <div class="fg" style="flex:1;"><span class="fg-label">Ao art.</span><select id="pomo-art-ate" style="width:100%;"><option value="">—</option></select></div>
-      </div>
-    </div>`;
-  showConfirm('Salvar estudo do Pomodoro','Registre o que você estudou:','Salvar','',
-    ()=>{pomoConfirmSave(totalMin);}, extraHtml);
-}
-function pomoModalDiscChange(){
-  const discId=parseInt(document.getElementById('pomo-disc-sel').value)||null;
-  const disc=discId?state.disciplinas.find(d=>d.id===discId):null;
-  const deEl=document.getElementById('pomo-art-de'),ateEl=document.getElementById('pomo-art-ate');
-  deEl.innerHTML='<option value="">—</option>';ateEl.innerHTML='<option value="">—</option>';
-  if(disc){for(let i=1;i<=disc.total;i++){deEl.innerHTML+=`<option value="${i}">${i}</option>`;ateEl.innerHTML+=`<option value="${i}">${i}</option>`;}}
-}
-function pomoModalArtChange(){
-  const de=parseInt(document.getElementById('pomo-art-de').value)||0;
-  const discId=parseInt(document.getElementById('pomo-disc-sel').value)||null;
-  const disc=discId?state.disciplinas.find(d=>d.id===discId):null;
-  const ateEl=document.getElementById('pomo-art-ate');
-  ateEl.innerHTML='<option value="">—</option>';
-  if(disc&&de){for(let i=de;i<=disc.total;i++)ateEl.innerHTML+=`<option value="${i}">${i}</option>`;ateEl.value=String(de);}
-}
-function pomoConfirmSave(totalMin){
-  const tema=(document.getElementById('pomo-tema')||{}).value?.trim()||'';
-  const discId=parseInt((document.getElementById('pomo-disc-sel')||{}).value)||null;
-  const artDe=parseInt((document.getElementById('pomo-art-de')||{}).value)||null;
-  const artAte=parseInt((document.getElementById('pomo-art-ate')||{}).value)||null;
-  const disc=discId?state.disciplinas.find(d=>d.id===discId):null;
-  const discNome=disc?disc.nome:'';
-  if(!tema&&!discNome){alert('Preencha o conteúdo estudado ou selecione uma disciplina.');return;}
-  const artAteReal=artAte||artDe;
-  const data=todayStr();
-  const id=Date.now();
-  const artigos=artDe?getArtigosRange(artDe,artAteReal):[];
-  if(disc&&artigos.length)artigos.forEach(a=>{if(!disc.artigos.includes(a))disc.artigos.push(a);});
-  // create revision entry (same as addRevisao)
-  state.revisoes.unshift({id,tema,disc:discNome,discNome,discId,artDe,artAte:artAteReal,artigos,data,revDates:addRevDates(data),done:[false,false,false]});
-  // create hours entry with pomodoro time
-  state.horas.unshift({id:id+1,data,disc:discNome||(tema||'Estudo'),horas:totalMin/60,nota:buildChipLabel({tema,discNome,artDe,artAte:artAteReal}),fromRevisao:true,fromPomodoro:true});
-  save();
-  renderTimeline();renderProgresso();renderDashboard();
-  // reset pomodoro accumulated
-  pomoState.accumulatedSec=0;
-  pomoRender();
-  // registro concluído sem alert extra
-}
 
 // ── TEMA ──────────────────────────────────────
 const THEMES=['light','dark','sepia'];
