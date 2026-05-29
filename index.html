@@ -378,55 +378,6 @@ button.sm{padding:5px 10px;font-size:12px;}
 
 <!-- MODAL CONFIRM / DISC -->
 
-<!-- ══ POMODORO ══ -->
-<div id="sec-pomodoro" class="section">
-  <div style="max-width:480px;margin:0 auto;text-align:center;">
-
-    <!-- Timer display -->
-    <div id="pomo-card" style="background:var(--bg2);border-radius:20px;padding:2.5rem 2rem;margin-bottom:1.5rem;">
-      <div id="pomo-phase" style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--blue);margin-bottom:1rem;">Foco</div>
-      <div id="pomo-time" style="font-size:64px;font-weight:700;line-height:1;color:var(--text);font-variant-numeric:tabular-nums;">25:00</div>
-      <div id="pomo-cycles" style="font-size:12px;color:var(--text2);margin-top:1rem;">Ciclo 1 de 4</div>
-
-      <div style="display:flex;gap:10px;justify-content:center;margin-top:1.5rem;">
-        <button id="pomo-start" class="primary" onclick="pomoStartPause()" style="min-width:120px;justify-content:center;font-size:15px;padding:10px 20px;">Iniciar</button>
-        <button onclick="pomoReset()" style="font-size:14px;padding:10px 16px;">Reiniciar</button>
-      </div>
-    </div>
-
-    <!-- Accumulated study time this session -->
-    <div style="background:var(--bg2);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;">
-      <div style="text-align:left;">
-        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);">Tempo de foco acumulado</div>
-        <div id="pomo-accumulated" style="font-size:24px;font-weight:700;color:var(--gold,#c9a84c);margin-top:2px;">0min</div>
-      </div>
-      <button id="pomo-save-btn" class="primary" onclick="pomoSaveStudy()" style="font-size:13px;padding:8px 16px;" disabled>Salvar estudo</button>
-    </div>
-
-    <!-- Settings -->
-    <div class="collapsible" id="pomo-settings-collapsible" style="text-align:left;">
-      <div class="collapsible-header" onclick="toggleCollapsible('pomo-settings')">
-        <span class="collapsible-title">⚙ Configurar tempos</span>
-        <span class="collapsible-arrow" id="pomo-settings-arrow">▼</span>
-      </div>
-      <div class="collapsible-body" id="pomo-settings-body">
-        <div class="form-row">
-          <div class="fg"><span class="fg-label">Foco (min)</span><input type="number" id="pomo-focus-min" value="25" min="1" max="120"/></div>
-          <div class="fg"><span class="fg-label">Pausa curta (min)</span><input type="number" id="pomo-short-min" value="5" min="1" max="60"/></div>
-        </div>
-        <div class="form-row">
-          <div class="fg"><span class="fg-label">Pausa longa (min)</span><input type="number" id="pomo-long-min" value="15" min="1" max="60"/></div>
-          <div class="fg"><span class="fg-label">Ciclos até pausa longa</span><input type="number" id="pomo-cycles-count" value="4" min="1" max="10"/></div>
-        </div>
-        <div style="display:flex;justify-content:flex-end;">
-          <button class="primary" onclick="pomoApplySettings()">Aplicar</button>
-        </div>
-      </div>
-    </div>
-
-  </div>
-</div>
-
 <div class="modal-overlay" id="confirm-overlay" onclick="closeConfirm(event)">
   <div class="modal" style="max-width:360px;">
     <h3 id="confirm-title">Confirmar</h3>
@@ -556,10 +507,6 @@ button.sm{padding:5px 10px;font-size:12px;}
 <!-- ══ HORAS ══ -->
 <div id="sec-horas" class="section">
 
-  <div style="font-size:12px;color:var(--text2);margin-bottom:1rem;padding:10px 12px;background:var(--bg2);border-radius:var(--radius-sm);">
-    As horas são registradas automaticamente ao concluir revisões ou usar o Pomodoro.
-  </div>
-
   <div class="hours-top">
     <div class="metric"><div class="metric-label">Total geral</div><div class="metric-value" id="m-total">0h</div></div>
     <div class="metric"><div class="metric-label">Esta semana</div><div class="metric-value" id="m-semana">0h</div></div>
@@ -608,6 +555,72 @@ button.sm{padding:5px 10px;font-size:12px;}
     <div class="disc-list" id="disc-list"><div class="empty-state">Nenhuma disciplina cadastrada.</div></div>
   </div>
 </div>
+
+<!-- ══ POMODORO ══ -->
+<div id="sec-pomodoro" class="section">
+  <div style="max-width:480px;margin:0 auto;text-align:center;">
+
+    <!-- Timer display -->
+    <div id="pomo-card" style="background:var(--bg2);border-radius:20px;padding:2.5rem 2rem;margin-bottom:1.5rem;">
+      <div id="pomo-phase" style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--blue);margin-bottom:1rem;">Foco</div>
+      <div id="pomo-time" style="font-size:64px;font-weight:700;line-height:1;color:var(--text);font-variant-numeric:tabular-nums;">25:00</div>
+      <div id="pomo-cycles" style="font-size:12px;color:var(--text2);margin-top:1rem;">Ciclo 1 de 4</div>
+
+      <div style="display:flex;gap:10px;justify-content:center;margin-top:1.5rem;">
+        <button id="pomo-start" class="primary" onclick="pomoStartPause()" style="min-width:120px;justify-content:center;font-size:15px;padding:10px 20px;">Iniciar</button>
+        <button onclick="pomoReset()" style="font-size:14px;padding:10px 16px;">Reiniciar</button>
+      </div>
+    </div>
+
+    <!-- Accumulated study time this session -->
+    <div style="background:var(--bg2);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;">
+      <div style="text-align:left;">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);">Tempo de foco acumulado</div>
+        <div id="pomo-accumulated" style="font-size:24px;font-weight:700;color:var(--gold,#c9a84c);margin-top:2px;">0min</div>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button id="pomo-clear-btn" onclick="pomoClearAccumulated()" style="font-size:12px;padding:8px 12px;color:var(--text2);background:transparent;border-color:transparent;">Limpar</button>
+        <button id="pomo-save-btn" class="primary" onclick="pomoSaveStudy()" style="font-size:13px;padding:8px 16px;" disabled>Salvar estudo</button>
+      </div>
+    </div>
+
+    <!-- Settings -->
+    <div class="collapsible" id="pomo-settings-collapsible" style="text-align:left;">
+      <div class="collapsible-header" onclick="toggleCollapsible('pomo-settings')">
+        <span class="collapsible-title">⚙ Configurar tempos</span>
+        <span class="collapsible-arrow" id="pomo-settings-arrow">▼</span>
+      </div>
+      <div class="collapsible-body" id="pomo-settings-body">
+        <div class="form-row">
+          <div class="fg"><span class="fg-label">Foco (min)</span><input type="number" id="pomo-focus-min" value="25" min="1" max="120"/></div>
+          <div class="fg"><span class="fg-label">Pausa curta (min)</span><input type="number" id="pomo-short-min" value="5" min="1" max="60"/></div>
+        </div>
+        <div class="form-row">
+          <div class="fg"><span class="fg-label">Pausa longa (min)</span><input type="number" id="pomo-long-min" value="15" min="1" max="60"/></div>
+          <div class="fg"><span class="fg-label">Ciclos até pausa longa</span><input type="number" id="pomo-cycles-count" value="4" min="1" max="10"/></div>
+        </div>
+        <div class="form-row">
+          <div class="fg grow"><span class="fg-label">Som de alerta</span>
+            <select id="pomo-sound">
+              <option value="beep">Bipe suave</option>
+              <option value="bell">Sino</option>
+              <option value="chime">Carrilhão</option>
+              <option value="none">Sem som</option>
+            </select>
+          </div>
+          <div class="fg" style="align-items:flex-end;flex-shrink:0;">
+            <button onclick="pomoTestSound()" style="font-size:12px;">▶ Testar</button>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;">
+          <button class="primary" onclick="pomoApplySettings()">Aplicar</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 
 </div><!-- /container -->
 </div><!-- /app-screen -->
@@ -1138,9 +1151,26 @@ function openModal(type,id){
   if(type==='rev'){
     const r=state.revisoes.find(x=>x.id===id);if(!r)return;
     document.getElementById('modal-title').textContent='Editar conteúdo estudado';
+    const discOpts=state.disciplinas.map(d=>`<option value="${d.id}" ${d.id===r.discId?'selected':''}>${d.nome}</option>`).join('');
+    const curDisc=r.discId?state.disciplinas.find(d=>d.id===r.discId):null;
+    let artDeOpts='<option value="">—</option>';
+    let artAteOpts='<option value="">—</option>';
+    if(curDisc){
+      for(let i=1;i<=curDisc.total;i++)artDeOpts+=`<option value="${i}" ${i===r.artDe?'selected':''}>${i}</option>`;
+      const startAte=r.artDe||1;
+      for(let i=startAte;i<=curDisc.total;i++)artAteOpts+=`<option value="${i}" ${i===r.artAte?'selected':''}>${i}</option>`;
+    }
+    // current hours for this revision (from horas entries)
+    const hEntry=state.horas.find(h=>h.id===r.id+1)||state.horas.find(h=>String(h.id).startsWith(String(r.id)));
+    const curHoras=hEntry?hEntry.horas:'';
     f.innerHTML=`
       <div class="modal-field"><span class="fg-label">Conteúdo estudado</span><input type="text" id="m-tema" value="${esc(r.tema||'')}"/></div>
-      <div class="modal-field"><span class="fg-label">Disciplina</span><input type="text" id="m-disc" value="${esc(r.discNome||r.disc||'')}"/></div>
+      <div class="modal-field"><span class="fg-label">Disciplina</span><select id="m-disc-sel" onchange="modalEditDiscChange()"><option value="">— selecionar —</option>${discOpts}</select></div>
+      <div class="modal-field" style="display:flex;gap:8px;">
+        <div style="flex:1;"><span class="fg-label">Do art.</span><select id="m-art-de" onchange="modalEditArtChange()">${artDeOpts}</select></div>
+        <div style="flex:1;"><span class="fg-label">Ao art.</span><select id="m-art-ate">${artAteOpts}</select></div>
+      </div>
+      <div class="modal-field"><span class="fg-label">Tempo estudado (horas)</span><input type="number" id="m-rev-horas" value="${curHoras}" min="0" step="0.25"/></div>
       <div class="modal-field"><span class="fg-label">Data estudada</span><input type="date" id="m-data" value="${r.data}"/></div>`;
   }else{
     const h=state.horas.find(x=>x.id===id);if(!h)return;
@@ -1157,6 +1187,21 @@ function closeModal(e){
   if(e&&e.target!==document.getElementById('modal-overlay'))return;
   document.getElementById('modal-overlay').classList.remove('open');modalCtx=null;
 }
+function modalEditDiscChange(){
+  const discId=parseInt(document.getElementById('m-disc-sel').value)||null;
+  const disc=discId?state.disciplinas.find(d=>d.id===discId):null;
+  const deEl=document.getElementById('m-art-de'),ateEl=document.getElementById('m-art-ate');
+  deEl.innerHTML='<option value="">—</option>';ateEl.innerHTML='<option value="">—</option>';
+  if(disc){for(let i=1;i<=disc.total;i++){deEl.innerHTML+=`<option value="${i}">${i}</option>`;ateEl.innerHTML+=`<option value="${i}">${i}</option>`;}}
+}
+function modalEditArtChange(){
+  const de=parseInt(document.getElementById('m-art-de').value)||0;
+  const discId=parseInt(document.getElementById('m-disc-sel').value)||null;
+  const disc=discId?state.disciplinas.find(d=>d.id===discId):null;
+  const ateEl=document.getElementById('m-art-ate');
+  ateEl.innerHTML='<option value="">—</option>';
+  if(disc&&de){for(let i=de;i<=disc.total;i++)ateEl.innerHTML+=`<option value="${i}">${i}</option>`;ateEl.value=String(de);}
+}
 function saveModal(){
   if(!modalCtx)return;
   const{type,id}=modalCtx;
@@ -1165,7 +1210,26 @@ function saveModal(){
     if(r){
       const nd=document.getElementById('m-data').value;
       r.tema=document.getElementById('m-tema').value.trim();
-      r.discNome=document.getElementById('m-disc').value.trim();r.disc=r.discNome;
+      const newDiscId=parseInt(document.getElementById('m-disc-sel').value)||null;
+      const newDisc=newDiscId?state.disciplinas.find(d=>d.id===newDiscId):null;
+      // remove old artigos from old disc
+      if(r.discId&&r.discId!==newDiscId&&r.artigos&&r.artigos.length){
+        const oldDisc=state.disciplinas.find(d=>d.id===r.discId);
+        if(oldDisc)oldDisc.artigos=oldDisc.artigos.filter(a=>!r.artigos.includes(a));
+      }
+      r.discId=newDiscId;r.discNome=newDisc?newDisc.nome:'';r.disc=r.discNome;
+      const newArtDe=parseInt(document.getElementById('m-art-de').value)||null;
+      const newArtAte=parseInt(document.getElementById('m-art-ate').value)||newArtDe;
+      r.artDe=newArtDe;r.artAte=newArtAte;
+      r.artigos=newArtDe?getArtigosRange(newArtDe,newArtAte):[];
+      if(newDisc&&r.artigos.length)r.artigos.forEach(a=>{if(!newDisc.artigos.includes(a))newDisc.artigos.push(a);});
+      // update hours
+      const newHoras=parseFloat(document.getElementById('m-rev-horas').value);
+      const hEntry=state.horas.find(h=>h.id===r.id+1);
+      if(!isNaN(newHoras)&&newHoras>0){
+        if(hEntry){hEntry.horas=newHoras;hEntry.disc=r.discNome||(r.tema||'Estudo');hEntry.nota=buildChipLabel(r);}
+        else state.horas.unshift({id:r.id+1,data:r.data,disc:r.discNome||(r.tema||'Estudo'),horas:newHoras,nota:buildChipLabel(r),fromRevisao:true});
+      }else if(hEntry){state.horas=state.horas.filter(h=>h.id!==r.id+1);}
       if(nd!==r.data){r.data=nd;r.revDates=addRevDates(nd);r.done=[false,false,false];}
     }
   }else{
@@ -1232,9 +1296,45 @@ let pomoState={
   running:false, phase:'focus', // focus | short | long
   remaining:25*60, cycle:1,
   focusMin:25, shortMin:5, longMin:15, cyclesCount:4,
-  accumulatedSec:0, // total focus seconds this session
+  accumulatedSec:0, sound:'beep',
   interval:null, initialized:false
 };
+// Pomodoro sound via Web Audio API
+let pomoAudioCtx=null;
+function pomoPlaySound(type){
+  type=type||pomoState.sound||'beep';
+  if(type==='none')return;
+  try{
+    if(!pomoAudioCtx)pomoAudioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    const ctx=pomoAudioCtx;
+    const now=ctx.currentTime;
+    const patterns={
+      beep:[{f:660,t:0,d:0.15},{f:880,t:0.18,d:0.2}],
+      bell:[{f:830,t:0,d:0.5},{f:1100,t:0.05,d:0.6}],
+      chime:[{f:523,t:0,d:0.3},{f:659,t:0.15,d:0.3},{f:784,t:0.3,d:0.4}]
+    };
+    const notes=patterns[type]||patterns.beep;
+    notes.forEach(n=>{
+      const osc=ctx.createOscillator(),gain=ctx.createGain();
+      osc.type=type==='bell'?'sine':'triangle';
+      osc.frequency.value=n.f;
+      gain.gain.setValueAtTime(0.0001,now+n.t);
+      gain.gain.exponentialRampToValueAtTime(0.3,now+n.t+0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001,now+n.t+n.d);
+      osc.connect(gain);gain.connect(ctx.destination);
+      osc.start(now+n.t);osc.stop(now+n.t+n.d);
+    });
+  }catch(e){console.log('Som indisponível:',e);}
+}
+function pomoTestSound(){
+  const soundEl=document.getElementById('pomo-sound');
+  pomoPlaySound(soundEl?soundEl.value:'beep');
+}
+function pomoClearAccumulated(){
+  if(pomoState.accumulatedSec<60){pomoState.accumulatedSec=0;pomoRender();return;}
+  showConfirm('Limpar tempo acumulado','Deseja zerar o tempo de foco acumulado nesta sessão?','Limpar','',
+    ()=>{pomoState.accumulatedSec=0;pomoRender();});
+}
 function pomoInit(){
   if(!pomoState.initialized){
     pomoApplySettings();
@@ -1247,6 +1347,7 @@ function pomoApplySettings(){
   pomoState.shortMin=parseInt(document.getElementById('pomo-short-min').value)||5;
   pomoState.longMin=parseInt(document.getElementById('pomo-long-min').value)||15;
   pomoState.cyclesCount=parseInt(document.getElementById('pomo-cycles-count').value)||4;
+  const soundEl=document.getElementById('pomo-sound');if(soundEl)pomoState.sound=soundEl.value;
   if(!pomoState.running){
     pomoState.remaining=pomoState.focusMin*60;
     pomoState.phase='focus';
@@ -1292,6 +1393,7 @@ function pomoPhaseEnd(){
   pomoState.running=false;
   // sound/vibration
   try{if(navigator.vibrate)navigator.vibrate([200,100,200]);}catch(e){}
+  pomoPlaySound();
   if(pomoState.phase==='focus'){
     // after focus → break
     if(pomoState.cycle>=pomoState.cyclesCount){
@@ -1333,9 +1435,9 @@ function pomoOpenSaveModal(totalMin){
   const extraHtml=`
     <div style="text-align:left;">
       <div style="font-size:13px;margin-bottom:12px;padding:8px 10px;background:var(--blue-bg);border-radius:var(--radius-sm);color:var(--text);">
-        ⏱ Tempo de foco: <strong>${formatH(totalMin/60)}</strong> — será registrado automaticamente
+        ⏱ Tempo de foco: <strong>${formatH(totalMin/60)}</strong>
       </div>
-      <div class="fg" style="margin-bottom:10px;"><span class="fg-label">Conteúdo estudado (livre)</span><input type="text" id="pomo-tema" style="width:100%;"/></div>
+      <div class="fg" style="margin-bottom:10px;"><span class="fg-label">Conteúdo estudado</span><input type="text" id="pomo-tema" style="width:100%;"/></div>
       <div class="fg" style="margin-bottom:10px;"><span class="fg-label">Disciplina</span>
         <select id="pomo-disc-sel" onchange="pomoModalDiscChange()" style="width:100%;"><option value="">— selecionar —</option>${discOpts}</select>
       </div>
@@ -1384,7 +1486,7 @@ function pomoConfirmSave(totalMin){
   // reset pomodoro accumulated
   pomoState.accumulatedSec=0;
   pomoRender();
-  alert('Estudo registrado com sucesso! Veja em Revisões e Horas.');
+  // registro concluído sem alert extra
 }
 
 // ── TEMA ──────────────────────────────────────
@@ -1538,8 +1640,11 @@ function drawDonut(byDisc){
     angle+=sweep;
   });
   // center text
-  html+=`<text x="${cx}" y="${cy-7}" text-anchor="middle" font-size="17" font-weight="600" class="donut-center-text">${formatH(total)}</text>`;
-  html+=`<text x="${cx}" y="${cy+10}" text-anchor="middle" font-size="10" class="donut-center-text" opacity="0.5">total</text>`;
+  const _theme=document.documentElement.getAttribute("data-theme")||"light";
+  const _fillMap={"light":"#1a2420","":"#1a2420","dark":"#f0ece4","sepia":"#2a1f0e"};
+  const tFill=_fillMap[_theme]||"#1a2420";
+  html+=`<text x="${cx}" y="${cy-7}" text-anchor="middle" font-size="17" font-weight="600" fill="${tFill}">${formatH(total)}</text>`;
+  html+=`<text x="${cx}" y="${cy+10}" text-anchor="middle" font-size="10" fill="${tFill}" opacity="0.55">total</text>`;
   svg.innerHTML=html;
   legend.innerHTML=entries.map(([disc,val],i)=>`
     <div class="donut-legend-item">
@@ -1634,9 +1739,45 @@ let pomoState={
   running:false, phase:'focus', // focus | short | long
   remaining:25*60, cycle:1,
   focusMin:25, shortMin:5, longMin:15, cyclesCount:4,
-  accumulatedSec:0, // total focus seconds this session
+  accumulatedSec:0, sound:'beep',
   interval:null, initialized:false
 };
+// Pomodoro sound via Web Audio API
+let pomoAudioCtx=null;
+function pomoPlaySound(type){
+  type=type||pomoState.sound||'beep';
+  if(type==='none')return;
+  try{
+    if(!pomoAudioCtx)pomoAudioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    const ctx=pomoAudioCtx;
+    const now=ctx.currentTime;
+    const patterns={
+      beep:[{f:660,t:0,d:0.15},{f:880,t:0.18,d:0.2}],
+      bell:[{f:830,t:0,d:0.5},{f:1100,t:0.05,d:0.6}],
+      chime:[{f:523,t:0,d:0.3},{f:659,t:0.15,d:0.3},{f:784,t:0.3,d:0.4}]
+    };
+    const notes=patterns[type]||patterns.beep;
+    notes.forEach(n=>{
+      const osc=ctx.createOscillator(),gain=ctx.createGain();
+      osc.type=type==='bell'?'sine':'triangle';
+      osc.frequency.value=n.f;
+      gain.gain.setValueAtTime(0.0001,now+n.t);
+      gain.gain.exponentialRampToValueAtTime(0.3,now+n.t+0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001,now+n.t+n.d);
+      osc.connect(gain);gain.connect(ctx.destination);
+      osc.start(now+n.t);osc.stop(now+n.t+n.d);
+    });
+  }catch(e){console.log('Som indisponível:',e);}
+}
+function pomoTestSound(){
+  const soundEl=document.getElementById('pomo-sound');
+  pomoPlaySound(soundEl?soundEl.value:'beep');
+}
+function pomoClearAccumulated(){
+  if(pomoState.accumulatedSec<60){pomoState.accumulatedSec=0;pomoRender();return;}
+  showConfirm('Limpar tempo acumulado','Deseja zerar o tempo de foco acumulado nesta sessão?','Limpar','',
+    ()=>{pomoState.accumulatedSec=0;pomoRender();});
+}
 function pomoInit(){
   if(!pomoState.initialized){
     pomoApplySettings();
@@ -1649,6 +1790,7 @@ function pomoApplySettings(){
   pomoState.shortMin=parseInt(document.getElementById('pomo-short-min').value)||5;
   pomoState.longMin=parseInt(document.getElementById('pomo-long-min').value)||15;
   pomoState.cyclesCount=parseInt(document.getElementById('pomo-cycles-count').value)||4;
+  const soundEl=document.getElementById('pomo-sound');if(soundEl)pomoState.sound=soundEl.value;
   if(!pomoState.running){
     pomoState.remaining=pomoState.focusMin*60;
     pomoState.phase='focus';
@@ -1694,6 +1836,7 @@ function pomoPhaseEnd(){
   pomoState.running=false;
   // sound/vibration
   try{if(navigator.vibrate)navigator.vibrate([200,100,200]);}catch(e){}
+  pomoPlaySound();
   if(pomoState.phase==='focus'){
     // after focus → break
     if(pomoState.cycle>=pomoState.cyclesCount){
@@ -1735,9 +1878,9 @@ function pomoOpenSaveModal(totalMin){
   const extraHtml=`
     <div style="text-align:left;">
       <div style="font-size:13px;margin-bottom:12px;padding:8px 10px;background:var(--blue-bg);border-radius:var(--radius-sm);color:var(--text);">
-        ⏱ Tempo de foco: <strong>${formatH(totalMin/60)}</strong> — será registrado automaticamente
+        ⏱ Tempo de foco: <strong>${formatH(totalMin/60)}</strong>
       </div>
-      <div class="fg" style="margin-bottom:10px;"><span class="fg-label">Conteúdo estudado (livre)</span><input type="text" id="pomo-tema" style="width:100%;"/></div>
+      <div class="fg" style="margin-bottom:10px;"><span class="fg-label">Conteúdo estudado</span><input type="text" id="pomo-tema" style="width:100%;"/></div>
       <div class="fg" style="margin-bottom:10px;"><span class="fg-label">Disciplina</span>
         <select id="pomo-disc-sel" onchange="pomoModalDiscChange()" style="width:100%;"><option value="">— selecionar —</option>${discOpts}</select>
       </div>
@@ -1786,7 +1929,7 @@ function pomoConfirmSave(totalMin){
   // reset pomodoro accumulated
   pomoState.accumulatedSec=0;
   pomoRender();
-  alert('Estudo registrado com sucesso! Veja em Revisões e Horas.');
+  // registro concluído sem alert extra
 }
 
 // ── TEMA ──────────────────────────────────────
