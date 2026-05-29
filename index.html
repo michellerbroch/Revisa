@@ -520,7 +520,13 @@ button.sm{padding:5px 10px;font-size:12px;}
     <div class="card">
       <h3>Horas por disciplina</h3>
       <div class="donut-wrap">
-        <svg id="donut-svg" width="160" height="160" viewBox="0 0 160 160"></svg>
+        <div style="position:relative;width:160px;height:160px;flex-shrink:0;">
+          <svg id="donut-svg" width="160" height="160" viewBox="0 0 160 160"></svg>
+          <div id="donut-center-text" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;line-height:1.2;">
+            <div id="donut-total-val" style="font-size:17px;font-weight:700;color:var(--text);"></div>
+            <div style="font-size:10px;color:var(--text2);">total</div>
+          </div>
+        </div>
         <div class="donut-legend" id="donut-legend"></div>
       </div>
     </div>
@@ -1316,35 +1322,32 @@ function pomoPlaySound(type){
   if(type==='none')return;
   try{
     if(!pomoAudioCtx)pomoAudioCtx=new (window.AudioContext||window.webkitAudioContext)();
-    if(pomoAudioCtx.state==='suspended')pomoAudioCtx.resume();
-    pomoStopSound();
     const ctx=pomoAudioCtx;
-    const now=ctx.currentTime;
-    // Padrões mais longos e marcantes
-    const patterns={
-      beep:[
-        {f:660,t:0,d:0.25},{f:660,t:0.3,d:0.25},{f:880,t:0.6,d:0.4}
-      ],
-      bell:[
-        {f:830,t:0,d:0.8},{f:1100,t:0.3,d:0.9},{f:830,t:0.7,d:0.8}
-      ],
-      chime:[
-        {f:523,t:0,d:0.4},{f:659,t:0.25,d:0.4},{f:784,t:0.5,d:0.4},
-        {f:1047,t:0.75,d:0.6}
-      ]
+    // Resume se necessário (iOS Safari)
+    const play=()=>{
+      pomoStopSound();
+      const now=ctx.currentTime;
+      const patterns={
+        beep:[{f:523,t:0.05,d:0.3},{f:659,t:0.4,d:0.3},{f:784,t:0.75,d:0.5}],
+        bell:[{f:880,t:0.05,d:1.0},{f:1109,t:0.4,d:0.9},{f:880,t:0.9,d:0.8}],
+        chime:[{f:523,t:0.05,d:0.4},{f:659,t:0.35,d:0.4},{f:784,t:0.65,d:0.4},{f:1047,t:0.95,d:0.7}]
+      };
+      const notes=patterns[type]||patterns.beep;
+      notes.forEach(n=>{
+        const osc=ctx.createOscillator(),gain=ctx.createGain();
+        osc.type='sine';
+        osc.frequency.value=n.f;
+        gain.gain.setValueAtTime(0.001,now+n.t);
+        gain.gain.linearRampToValueAtTime(0.4,now+n.t+0.05);
+        gain.gain.linearRampToValueAtTime(0.001,now+n.t+n.d);
+        osc.connect(gain);gain.connect(ctx.destination);
+        osc.start(now+n.t);
+        osc.stop(now+n.t+n.d+0.1);
+        pomoActiveNodes.push({osc,gain});
+      });
     };
-    const notes=patterns[type]||patterns.beep;
-    notes.forEach(n=>{
-      const osc=ctx.createOscillator(),gain=ctx.createGain();
-      osc.type=type==='bell'?'sine':'triangle';
-      osc.frequency.value=n.f;
-      gain.gain.setValueAtTime(0.0001,now+n.t);
-      gain.gain.exponentialRampToValueAtTime(0.35,now+n.t+0.03);
-      gain.gain.exponentialRampToValueAtTime(0.0001,now+n.t+n.d);
-      osc.connect(gain);gain.connect(ctx.destination);
-      osc.start(now+n.t);osc.stop(now+n.t+n.d+0.05);
-      pomoActiveNodes.push({osc,gain});
-    });
+    if(ctx.state==='suspended'){ctx.resume().then(play);}
+    else{play();}
   }catch(e){console.log('Som indisponível:',e);}
 }
 function pomoTestSound(){
@@ -1655,14 +1658,10 @@ function drawDonut(byDisc){
     html+=donutSlice(cx,cy,R,r,angle,angle+safeSweep,getColorForDiscName(discName));
     angle+=sweep;
   });
-  // center text
-  let _theme="light";
-  try{_theme=localStorage.getItem("revisa-theme")||"light";}catch(e){}
-  const _fillMap={"light":"#1a2420","dark":"#f0ece4","sepia":"#2a1f0e"};
-  const tFill=_fillMap[_theme]||"#1a2420";
-  html+=`<text x="${cx}" y="${cy-7}" text-anchor="middle" font-size="17" font-weight="600" fill="${tFill}">${formatH(total)}</text>`;
-  html+=`<text x="${cx}" y="${cy+10}" text-anchor="middle" font-size="10" fill="${tFill}" opacity="0.55">total</text>`;
   svg.innerHTML=html;
+  // center text via HTML overlay (adapts to CSS theme automatically)
+  const totalEl=document.getElementById('donut-total-val');
+  if(totalEl)totalEl.textContent=formatH(total);
   legend.innerHTML=entries.map(([disc,val],i)=>`
     <div class="donut-legend-item">
       <span style="display:flex;align-items:center;gap:6px;">
@@ -1763,8 +1762,7 @@ function applyTheme(t){
   const btn=document.getElementById('theme-btn');
   if(btn)btn.innerHTML=THEME_SVGS[t]||THEME_SVGS.light;
   try{localStorage.setItem('revisa-theme',t);}catch(e){}
-  // Re-render donut so center text color updates
-  if(document.getElementById('donut-svg'))renderHoras();
+  // HTML overlay adapts automatically - no re-render needed
 }
 function cycleTheme(){
   const cur=localStorage.getItem('revisa-theme')||'light';
