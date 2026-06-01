@@ -698,19 +698,22 @@ button.sm{padding:5px 10px;font-size:12px;}
         <button onclick="fcAnswer(false)" style="flex:1;justify-content:center;background:#FCEBEB;color:#A32D2D;border-color:#E8B4B4;font-size:14px;padding:10px;">✗ Errei</button>
         <button onclick="fcAnswer(true)" style="flex:1;justify-content:center;background:#EAF5E9;color:#2E7D32;border-color:#A5D6A7;font-size:14px;padding:10px;">✓ Acertei</button>
       </div>
-      <!-- Add new card button -->
-      <div style="text-align:center;margin-top:1rem;">
-        <button onclick="fcOpenNewCard()" style="font-size:12px;color:var(--text2);background:transparent;border-color:transparent;">+ Adicionar card neste subtópico</button>
+      <!-- Card actions -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;">
+        <button onclick="fcDeleteCurrentCard()" style="font-size:12px;color:#A32D2D;background:transparent;border-color:transparent;">✕ Excluir card</button>
+        <button onclick="fcOpenNewCard()" style="font-size:12px;color:var(--text2);background:transparent;border-color:transparent;">+ Novo card</button>
       </div>
     </div>
   </div>
 
   <!-- MODE: FINISHED -->
   <div id="fc-done-view" style="display:none;text-align:center;padding:3rem 1rem;">
-    <div style="font-size:48px;margin-bottom:1rem;">🎉</div>
-    <div style="font-size:18px;font-weight:700;margin-bottom:8px;">Sessão concluída!</div>
+    <div style="width:56px;height:56px;border-radius:50%;background:var(--blue-bg);display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <div style="font-size:18px;font-weight:700;margin-bottom:6px;">Sessão concluída</div>
     <div style="font-size:13px;color:var(--text2);margin-bottom:1.5rem;" id="fc-done-stats"></div>
-    <button class="primary" onclick="fcBackToList()" style="justify-content:center;">Voltar</button>
+    <button class="primary" onclick="fcBackToList()" style="justify-content:center;">Voltar para disciplinas</button>
   </div>
 
 </div>
@@ -1902,7 +1905,7 @@ function fcRenderList(){
       return '<div class="fc-sub-item" onclick="fcStartReview('+disc.id+','+st.id+')">'
         +'<span class="fc-sub-name">'+st.nome+'</span>'
         +'<span class="fc-sub-stats">'+st.cards.length+' cards'+dueSub+'</span>'
-        +'<button onclick="event.stopPropagation();fcDeleteSub('+disc.id+','+st.id+')" style="font-size:10px;padding:2px 5px;color:#A32D2D;background:#FCEBEB;border-color:#E8B4B4;">x</button>'
+        +'<button onclick="event.stopPropagation();fcEditSub('+disc.id+','+st.id+')" title="Editar subtopico" style="font-size:11px;padding:2px 7px;background:transparent;border-color:var(--border);color:var(--text2);">✎</button>'
         +'</div>';
     }).join('');
     return '<div class="fc-disc-card">'
@@ -1910,14 +1913,17 @@ function fcRenderList(){
       +'<span class="fc-disc-name">'+disc.nome+'</span>'
       +'<span class="fc-disc-meta">'+totalCards+' cards'+dueBadge+'</span>'
       +'<div style="display:flex;gap:6px;align-items:center;">'
-      +'<button onclick="event.stopPropagation();fcDeleteDisc('+disc.id+')" style="font-size:11px;padding:2px 6px;color:#A32D2D;background:#FCEBEB;border-color:#E8B4B4;">x</button>'
-      +'<span class="fc-disc-arrow" id="fc-arrow-'+disc.id+'">v</span>'
+      +'<button onclick="event.stopPropagation();fcDeleteDisc('+disc.id+')" title="Excluir disciplina" style="font-size:11px;padding:2px 7px;background:transparent;border-color:var(--border);color:var(--text2);">✕</button>'
+      +'<span class="fc-disc-arrow" id="fc-arrow-'+disc.id+'">&#9660;</span>'
       +'</div></div>'
       +'<div class="fc-sub-body" id="fc-sub-'+disc.id+'" style="display:none;">'
+      +'<div style="display:flex;justify-content:flex-end;padding:4px 4px 2px;">'
+      +'<button onclick="fcOpenAddCard('+disc.id+')" style="font-size:12px;padding:4px 12px;background:var(--blue);color:#fff;border-color:var(--blue);">+ Flashcard</button>'
+      +'</div>'
       +subItems
       +'<div class="fc-sub-add">'
       +'<input type="text" id="fc-new-sub-'+disc.id+'" placeholder="Novo subtopico..." style="flex:1;font-size:13px;"/>'
-      +'<button onclick="fcAddSub('+disc.id+')" style="font-size:12px;padding:6px 10px;">+ Adicionar</button>'
+      +'<button onclick="fcAddSub('+disc.id+')" style="font-size:12px;padding:6px 10px;">+ Subtopico</button>'
       +'</div></div></div>';
   }).join('');
 }
@@ -1945,26 +1951,94 @@ function fcAddSub(discId){
   const nome=(inp?inp.value:'').trim();
   if(!nome){inp&&inp.focus();return;}
   disc.subtopicos.push({id:Date.now(),nome,cards:[]});
-  fcSave();fcRenderList();
-  // reopen
-  setTimeout(()=>{
-    const body=document.getElementById('fc-sub-'+discId);
-    const arrow=document.getElementById('fc-arrow-'+discId);
-    if(body){body.style.display='block';}
-    if(arrow){arrow.classList.add('open');}
-  },50);
+  fcSave();
+  // preserve open dropdowns
+  const openDiscs=fcGetOpenDiscs();
+  fcRenderList();
+  fcRestoreOpenDiscs(openDiscs);
+}
+function fcGetOpenDiscs(){
+  if(!state.fc)return[];
+  return state.fc.disciplinas.filter(d=>{
+    const b=document.getElementById('fc-sub-'+d.id);
+    return b&&b.style.display==='block';
+  }).map(d=>d.id);
+}
+function fcRestoreOpenDiscs(ids){
+  ids.forEach(id=>{
+    const body=document.getElementById('fc-sub-'+id);
+    const arrow=document.getElementById('fc-arrow-'+id);
+    if(body)body.style.display='block';
+    if(arrow)arrow.classList.add('open');
+  });
 }
 function fcDeleteDisc(discId){
   showConfirm('Excluir disciplina','Todos os subtópicos e cards serão apagados.','Excluir','background:#A32D2D;color:#fff;border-color:#A32D2D;',()=>{
+    const _open=fcGetOpenDiscs();
     state.fc.disciplinas=state.fc.disciplinas.filter(d=>d.id!==discId);
-    fcSave();fcRenderList();
+    fcSave();fcRenderList();fcRestoreOpenDiscs(_open);
   });
+}
+function fcEditSub(discId,subId){
+  const disc=state.fc.disciplinas.find(d=>d.id===discId);if(!disc)return;
+  const sub=disc.subtopicos.find(s=>s.id===subId);if(!sub)return;
+  showConfirm('Editar subtopico','',null,null,null,
+    '<div style="display:flex;flex-direction:column;gap:10px;">'
+    +'<div><span class="fg-label">Nome do subtopico</span>'
+    +'<input type="text" id="fc-edit-sub-name" value="'+sub.nome+'" style="width:100%;"/></div>'
+    +'<button onclick="fcSaveSubName('+discId+','+subId+')" style="width:100%;justify-content:center;background:var(--blue);color:#fff;border-color:var(--blue);">Salvar nome</button>'
+    +'<button onclick="fcConfirmDeleteSub('+discId+','+subId+')" style="width:100%;justify-content:center;background:#FCEBEB;color:#A32D2D;border-color:#E8B4B4;">Excluir subtopico</button>'
+    +'</div>'
+  );
+}
+function fcSaveSubName(discId,subId){
+  const disc=state.fc.disciplinas.find(d=>d.id===discId);if(!disc)return;
+  const sub=disc.subtopicos.find(s=>s.id===subId);if(!sub)return;
+  const inp=document.getElementById('fc-edit-sub-name');
+  const nome=(inp?inp.value:'').trim();
+  if(!nome)return;
+  sub.nome=nome;
+  fcSave();
+  document.getElementById('confirm-overlay').classList.remove('open');
+  const _open=fcGetOpenDiscs();fcRenderList();fcRestoreOpenDiscs(_open);
+}
+function fcConfirmDeleteSub(discId,subId){
+  document.getElementById('confirm-overlay').classList.remove('open');
+  setTimeout(()=>{fcDeleteSub(discId,subId);},150);
+}
+function fcOpenAddCard(discId){
+  // pre-select this discipline but let user choose subtopic
+  const disc=state.fc.disciplinas.find(d=>d.id===discId);if(!disc)return;
+  const subOpts=disc.subtopicos.map(s=>'<option value="'+s.id+'">'+s.nome+'</option>').join('');
+  if(!subOpts){
+    showConfirm('Sem subtopicos','Adicione um subtopico primeiro.','Ok','',null);return;
+  }
+  showConfirm('Novo flashcard','','Salvar','',()=>{
+    const sId=parseInt(document.getElementById('fc-card-sub2').value)||null;
+    const frente=(document.getElementById('fc-card-frente2')||{}).value.trim();
+    const verso=(document.getElementById('fc-card-verso2')||{}).value.trim();
+    if(!frente||!verso){alert('Preencha frente e verso.');return;}
+    const sub2=disc.subtopicos.find(s=>s.id===sId);if(!sub2)return;
+    sub2.cards.push({id:Date.now(),frente,verso,intervalo:0,proxRevisao:null,acertos:0,erros:0});
+    fcSave();
+    const _open=fcGetOpenDiscs();fcRenderList();fcRestoreOpenDiscs(_open);
+  },
+  '<div style="display:flex;flex-direction:column;gap:10px;">'
+  +'<div><span class="fg-label">Subtopico</span>'
+  +'<select id="fc-card-sub2" style="width:100%;">'+subOpts+'</select></div>'
+  +'<div><span class="fg-label">Frente (pergunta)</span>'
+  +'<textarea id="fc-card-frente2" rows="3" style="width:100%;resize:vertical;"></textarea></div>'
+  +'<div><span class="fg-label">Verso (resposta)</span>'
+  +'<textarea id="fc-card-verso2" rows="3" style="width:100%;resize:vertical;"></textarea></div>'
+  +'</div>'
+  );
 }
 function fcDeleteSub(discId,subId){
   const disc=state.fc.disciplinas.find(d=>d.id===discId);if(!disc)return;
   showConfirm('Excluir subtópico','Todos os cards deste subtópico serão apagados.','Excluir','background:#A32D2D;color:#fff;border-color:#A32D2D;',()=>{
+    const _open2=fcGetOpenDiscs();
     disc.subtopicos=disc.subtopicos.filter(s=>s.id!==subId);
-    fcSave();fcRenderList();
+    fcSave();fcRenderList();fcRestoreOpenDiscs(_open2);
   });
 }
 
@@ -2030,6 +2104,18 @@ function fcAnswer(acertou){
   fcSave();
   // Small delay for visual feedback
   setTimeout(fcShowCard,300);
+}
+function fcDeleteCurrentCard(){
+  const card=fcSession.queue[fcSession.current];if(!card)return;
+  const disc=state.fc.disciplinas.find(d=>d.id===fcSession.discId);if(!disc)return;
+  const sub=disc.subtopicos.find(s=>s.id===fcSession.subId);if(!sub)return;
+  showConfirm('Excluir card','Deseja excluir este flashcard permanentemente?','Excluir','background:#A32D2D;color:#fff;border-color:#A32D2D;',()=>{
+    sub.cards=sub.cards.filter(c=>c.id!==card.id);
+    fcSession.queue.splice(fcSession.current,1);
+    fcSave();
+    if(fcSession.current>=fcSession.queue.length){fcFinish();}
+    else{fcShowCard();}
+  });
 }
 function fcFinish(){
   document.getElementById('fc-review-view').style.display='none';
