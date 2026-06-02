@@ -237,6 +237,8 @@ button.sm{padding:5px 10px;font-size:12px;}
 .fc-card-front,.fc-card-back{position:absolute;inset:0;border-radius:var(--radius);backface-visibility:hidden;display:flex;align-items:center;justify-content:center;padding:2rem;text-align:center;}
 .fc-card-front{background:var(--bg2);border:0.5px solid var(--border);}
 .fc-card-back{background:var(--blue);color:#fff;transform:rotateY(180deg);}
+.fc-card-back span[style*="background"]{color:#111!important;padding:1px 2px;border-radius:2px;}
+.fc-card-front span[style*="background"]{padding:1px 2px;border-radius:2px;}
 [data-theme="dark"] .fc-card-back{background:#1a3d35;}
 [data-theme="sepia"] .fc-card-back{background:#5a3e1b;color:#f5f0e8;}
 .fc-card-text{font-size:15px;line-height:1.6;font-weight:500;}
@@ -249,7 +251,7 @@ button.sm{padding:5px 10px;font-size:12px;}
 .fc-tb-btn{padding:3px 8px;font-size:12px;background:transparent;border-color:transparent;border-radius:4px;cursor:pointer;color:var(--text2);min-width:28px;text-align:center;}
 .fc-tb-btn:hover{background:var(--bg2);}
 .fc-tb-btn.active{background:var(--blue-bg);color:var(--blue);}
-.fc-editor{min-height:70px;padding:8px 10px;outline:none;font-size:14px;line-height:1.6;color:var(--text);background:var(--bg2);white-space:pre-wrap;word-break:break-word;}
+.fc-editor{min-height:70px;padding:8px 10px;outline:none;font-size:14px;line-height:1.6;color:var(--text);background:var(--bg2);white-space:pre-wrap;word-break:break-word;caret-color:var(--text);}
 .fc-color-swatch{width:16px;height:16px;border-radius:3px;display:inline-block;cursor:pointer;border:1.5px solid transparent;vertical-align:middle;}
 .fc-color-swatch:hover,.fc-color-swatch.active{border-color:var(--text);}
 </style>
@@ -1879,7 +1881,7 @@ function clearHorasTudo(){state.horas=[];save();renderHoras();renderDashboard();
 // State: state.fc = { disciplinas: [{id,nome,subtopicos:[{id,nome,cards:[{id,frente,verso,intervalo,proxRevisao,acertos,erros}]}]}] }
 
 function fcEditorHtml(id,placeholder){
-  const colors=['#c9a84c','#E53935','#1D9E75','#378ADD','#7F77DD','#f5f0e8'];
+  const colors=['#FFD600','#FF7043','#69F0AE','#40C4FF','#E040FB','#CCFF90'];
   const swatches=colors.map(col=>
     '<span class="fc-color-swatch" style="background:'+col+';" onclick="fcApplyColor(\''+id+'\',\''+col+'\')"></span>'
   ).join('');
@@ -1891,18 +1893,32 @@ function fcEditorHtml(id,placeholder){
     +'<span style="width:1px;background:var(--border);margin:2px 4px;"></span>'
     +swatches
     +'<span style="width:1px;background:var(--border);margin:2px 4px;"></span>'
-    +'<button class="fc-tb-btn" onclick="fcApplyColor(\''+id+'\',\'inherit\')" title="Remover cor" style="font-size:10px;">✕ cor</button>'
+    +'<button class="fc-tb-btn" onclick="fcApplyColor(\''+id+'\',\'remove\')" title="Remover marca texto" style="font-size:10px;">✕ marca</button>'
     +'</div>'
     +'<div class="fc-editor" id="'+id+'" contenteditable="true" '
     +'data-placeholder="'+placeholder+'" '
     +'style="min-height:70px;" '
     +'onblur="fcEditorBlur(this)">'
-    +'</div></div>';
+    +'<div style="font-size:10px;color:var(--text2);padding:3px 8px 4px;background:var(--bg);">Selecione o texto e clique na cor para destacar</div>'
+  +'</div></div>';
 }
 function fcApplyColor(editorId,color){
+  const sel=window.getSelection();
+  if(!sel||sel.isCollapsed)return;
   const el=document.getElementById(editorId);
-  if(el)el.focus();
-  document.execCommand('foreColor',false,color==='inherit'?'#'+((document.documentElement.getAttribute('data-theme')==='dark')?'f0ece4':'1a2420'):color);
+  if(el&&!el.contains(sel.anchorNode))return;
+  if(color==='remove'){
+    // Remove highlight and reset text color to default
+    document.execCommand('hiliteColor',false,'transparent');
+    document.execCommand('backColor',false,'transparent');
+    document.execCommand('removeFormat',false,null);
+  }else{
+    // Apply highlight
+    const applied=document.execCommand('hiliteColor',false,color);
+    if(!applied)document.execCommand('backColor',false,color);
+    // Force dark text on highlight so readable in all themes
+    document.execCommand('foreColor',false,'#111111');
+  }
 }
 function fcEditorBlur(el){
   if(el.innerHTML==='<br>'||el.innerHTML==='')el.innerHTML='';
@@ -1979,7 +1995,8 @@ function fcRenderList(){
       +'</div></div>'
       +'<div class="fc-sub-body" id="fc-sub-'+disc.id+'" style="display:none;">'
       +subItems
-      +'</div></div>';
+      +'<div style="font-size:10px;color:var(--text2);padding:3px 8px 4px;background:var(--bg);">Selecione o texto e clique na cor para destacar</div>'
+  +'</div></div>';
   }).join('');
 }
 function fcToggleDisc(discId){
