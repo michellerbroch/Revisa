@@ -665,7 +665,10 @@ button.sm{padding:5px 10px;font-size:12px;}
   <div id="fc-list-view">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
       <h2 style="font-size:18px;font-weight:700;margin:0;">Flashcards</h2>
-      <button class="primary" onclick="fcOpenNewDisc()" style="font-size:13px;padding:7px 14px;">+ Disciplina</button>
+      <div style="display:flex;gap:8px;">
+        <button onclick="fcOpenAddCardGlobal()" style="font-size:13px;padding:7px 14px;">+ Flashcard</button>
+        <button class="primary" onclick="fcOpenNewDisc()" style="font-size:13px;padding:7px 14px;">+ Disciplina</button>
+      </div>
     </div>
     <div id="fc-disc-list"></div>
   </div>
@@ -1905,26 +1908,33 @@ function fcRenderList(){
       return '<div class="fc-sub-item" onclick="fcStartReview('+disc.id+','+st.id+')">'
         +'<span class="fc-sub-name">'+st.nome+'</span>'
         +'<span class="fc-sub-stats">'+st.cards.length+' cards'+dueSub+'</span>'
-        +'<button onclick="event.stopPropagation();fcEditSub('+disc.id+','+st.id+')" title="Editar subtopico" style="font-size:11px;padding:2px 7px;background:transparent;border-color:var(--border);color:var(--text2);">✎</button>'
+        // "+" button to add flashcard directly on subtopic row
+        +'<button onclick="event.stopPropagation();fcOpenAddCardSub('+disc.id+','+st.id+')" title="Adicionar flashcard" '
+        +'style="width:24px;height:24px;padding:0;display:flex;align-items:center;justify-content:center;'
+        +'border-radius:6px;font-size:15px;line-height:1;background:transparent;border-color:var(--border);color:var(--text2);">+</button>'
+        +'<button onclick="event.stopPropagation();fcEditSub('+disc.id+','+st.id+')" title="Editar subtopico" '
+        +'style="width:24px;height:24px;padding:0;display:flex;align-items:center;justify-content:center;'
+        +'border-radius:6px;font-size:13px;background:transparent;border-color:var(--border);color:var(--text2);">✎</button>'
         +'</div>';
     }).join('');
     return '<div class="fc-disc-card">'
       +'<div class="fc-disc-header" onclick="fcToggleDisc('+disc.id+')">'
       +'<span class="fc-disc-name">'+disc.nome+'</span>'
       +'<span class="fc-disc-meta">'+totalCards+' cards'+dueBadge+'</span>'
-      +'<div style="display:flex;gap:6px;align-items:center;">'
-      +'<button onclick="event.stopPropagation();fcDeleteDisc('+disc.id+')" title="Excluir disciplina" style="font-size:11px;padding:2px 7px;background:transparent;border-color:var(--border);color:var(--text2);">✕</button>'
+      +'<div style="display:flex;gap:5px;align-items:center;">'
+      // "+" square to add subtopic
+      +'<button onclick="event.stopPropagation();fcPromptAddSub('+disc.id+')" title="Adicionar subtopico" '
+      +'style="width:26px;height:26px;padding:0;display:flex;align-items:center;justify-content:center;'
+      +'border-radius:6px;font-size:16px;line-height:1;background:transparent;border-color:var(--border);color:var(--text2);">+</button>'
+      // edit disc button (replaces x)
+      +'<button onclick="event.stopPropagation();fcEditDisc('+disc.id+')" title="Editar disciplina" '
+      +'style="width:26px;height:26px;padding:0;display:flex;align-items:center;justify-content:center;'
+      +'border-radius:6px;font-size:13px;background:transparent;border-color:var(--border);color:var(--text2);">✎</button>'
       +'<span class="fc-disc-arrow" id="fc-arrow-'+disc.id+'">&#9660;</span>'
       +'</div></div>'
       +'<div class="fc-sub-body" id="fc-sub-'+disc.id+'" style="display:none;">'
-      +'<div style="display:flex;justify-content:flex-end;padding:4px 4px 2px;">'
-      +'<button onclick="fcOpenAddCard('+disc.id+')" style="font-size:12px;padding:4px 12px;background:var(--blue);color:#fff;border-color:var(--blue);">+ Flashcard</button>'
-      +'</div>'
       +subItems
-      +'<div class="fc-sub-add">'
-      +'<input type="text" id="fc-new-sub-'+disc.id+'" placeholder="Novo subtopico..." style="flex:1;font-size:13px;"/>'
-      +'<button onclick="fcAddSub('+disc.id+')" style="font-size:12px;padding:6px 10px;">+ Subtopico</button>'
-      +'</div></div></div>';
+      +'</div></div>';
   }).join('');
 }
 function fcToggleDisc(discId){
@@ -1934,6 +1944,101 @@ function fcToggleDisc(discId){
   const open=body.style.display==='block';
   body.style.display=open?'none':'block';
   arrow.classList.toggle('open',!open);
+}
+function fcEditDisc(discId){
+  const disc=state.fc.disciplinas.find(d=>d.id===discId);if(!disc)return;
+  showConfirm('Editar disciplina','',null,null,null,
+    '<div style="display:flex;flex-direction:column;gap:10px;">'
+    +'<div><span class="fg-label">Nome da disciplina</span>'
+    +'<input type="text" id="fc-edit-disc-name" value="'+disc.nome+'" style="width:100%;"/></div>'
+    +'<button onclick="fcSaveDiscName('+discId+')" style="width:100%;justify-content:center;background:var(--blue);color:#fff;border-color:var(--blue);">Salvar nome</button>'
+    +'<button onclick="fcConfirmDeleteDisc('+discId+')" style="width:100%;justify-content:center;background:#FCEBEB;color:#A32D2D;border-color:#E8B4B4;">Excluir disciplina</button>'
+    +'</div>'
+  );
+}
+function fcSaveDiscName(discId){
+  const disc=state.fc.disciplinas.find(d=>d.id===discId);if(!disc)return;
+  const inp=document.getElementById('fc-edit-disc-name');
+  const nome=(inp?inp.value:'').trim();
+  if(!nome)return;
+  disc.nome=nome;
+  fcSave();
+  document.getElementById('confirm-overlay').classList.remove('open');
+  const _open=fcGetOpenDiscs();fcRenderList();fcRestoreOpenDiscs(_open);
+}
+function fcConfirmDeleteDisc(discId){
+  document.getElementById('confirm-overlay').classList.remove('open');
+  setTimeout(()=>{fcDeleteDisc(discId);},150);
+}
+function fcPromptAddSub(discId){
+  const disc=state.fc.disciplinas.find(d=>d.id===discId);if(!disc)return;
+  // Open the disc body first
+  const body=document.getElementById('fc-sub-'+discId);
+  const arrow=document.getElementById('fc-arrow-'+discId);
+  if(body)body.style.display='block';
+  if(arrow)arrow.classList.add('open');
+  showConfirm('Novo subtopico','','Adicionar','',()=>{
+    const inp=document.getElementById('fc-new-sub-inp');
+    const nome=(inp?inp.value:'').trim();if(!nome)return;
+    disc.subtopicos.push({id:Date.now(),nome,cards:[]});
+    fcSave();
+    const _open=fcGetOpenDiscs();fcRenderList();fcRestoreOpenDiscs(_open);
+  },'<input type="text" id="fc-new-sub-inp" placeholder="Nome do subtopico" style="width:100%;font-size:14px;"/>');
+}
+function fcOpenAddCardSub(discId,subId){
+  const disc=state.fc.disciplinas.find(d=>d.id===discId);if(!disc)return;
+  const sub=disc.subtopicos.find(s=>s.id===subId);if(!sub)return;
+  showConfirm('Novo flashcard — '+sub.nome,'','Salvar','',()=>{
+    const frente=(document.getElementById('fc-af-frente')||{}).value.trim();
+    const verso=(document.getElementById('fc-af-verso')||{}).value.trim();
+    if(!frente||!verso){alert('Preencha frente e verso.');return;}
+    sub.cards.push({id:Date.now(),frente,verso,intervalo:0,proxRevisao:null,acertos:0,erros:0});
+    fcSave();
+    const _open=fcGetOpenDiscs();fcRenderList();fcRestoreOpenDiscs(_open);
+  },
+  '<div style="display:flex;flex-direction:column;gap:10px;">'
+  +'<div><span class="fg-label">Frente (pergunta)</span>'
+  +'<textarea id="fc-af-frente" rows="3" style="width:100%;resize:vertical;"></textarea></div>'
+  +'<div><span class="fg-label">Verso (resposta)</span>'
+  +'<textarea id="fc-af-verso" rows="3" style="width:100%;resize:vertical;"></textarea></div>'
+  +'</div>'
+  );
+}
+function fcOpenAddCardGlobal(){
+  if(!state.fc||!state.fc.disciplinas.length){
+    showConfirm('Sem disciplinas','Crie uma disciplina primeiro.','Ok','',null);return;
+  }
+  const discOpts=state.fc.disciplinas.map(d=>'<option value="'+d.id+'">'+d.nome+'</option>').join('');
+  showConfirm('Novo flashcard','','Salvar','',()=>{
+    const dId=parseInt((document.getElementById('fc-ag-disc')||{}).value)||null;
+    const sId=parseInt((document.getElementById('fc-ag-sub')||{}).value)||null;
+    const frente=(document.getElementById('fc-ag-frente')||{}).value.trim();
+    const verso=(document.getElementById('fc-ag-verso')||{}).value.trim();
+    if(!frente||!verso){alert('Preencha frente e verso.');return;}
+    const disc=state.fc.disciplinas.find(d=>d.id===dId);if(!disc)return;
+    const sub=disc.subtopicos.find(s=>s.id===sId);if(!sub){alert('Selecione um subtopico.');return;}
+    sub.cards.push({id:Date.now(),frente,verso,intervalo:0,proxRevisao:null,acertos:0,erros:0});
+    fcSave();
+    const _open=fcGetOpenDiscs();fcRenderList();fcRestoreOpenDiscs(_open);
+  },
+  '<div style="display:flex;flex-direction:column;gap:10px;">'
+  +'<div><span class="fg-label">Disciplina</span>'
+  +'<select id="fc-ag-disc" onchange="fcUpdateAgSub()" style="width:100%;">'+discOpts+'</select></div>'
+  +'<div><span class="fg-label">Subtopico</span>'
+  +'<select id="fc-ag-sub" style="width:100%;"></select></div>'
+  +'<div><span class="fg-label">Frente (pergunta)</span>'
+  +'<textarea id="fc-ag-frente" rows="3" style="width:100%;resize:vertical;"></textarea></div>'
+  +'<div><span class="fg-label">Verso (resposta)</span>'
+  +'<textarea id="fc-ag-verso" rows="3" style="width:100%;resize:vertical;"></textarea></div>'
+  +'</div>'
+  );
+  setTimeout(()=>fcUpdateAgSub(),50);
+}
+function fcUpdateAgSub(){
+  const dId=parseInt((document.getElementById('fc-ag-disc')||{}).value)||null;
+  const disc=state.fc&&state.fc.disciplinas.find(d=>d.id===dId);
+  const sel=document.getElementById('fc-ag-sub');if(!sel)return;
+  sel.innerHTML=disc?disc.subtopicos.map(s=>'<option value="'+s.id+'">'+s.nome+'</option>').join(''):'<option>Sem subtopicos</option>';
 }
 function fcOpenNewDisc(){
   showConfirm('Nova disciplina','','Criar','',()=>{
@@ -2006,7 +2111,7 @@ function fcConfirmDeleteSub(discId,subId){
   document.getElementById('confirm-overlay').classList.remove('open');
   setTimeout(()=>{fcDeleteSub(discId,subId);},150);
 }
-function fcOpenAddCard(discId){
+function fcOpenAddCard_OLD(discId){
   // pre-select this discipline but let user choose subtopic
   const disc=state.fc.disciplinas.find(d=>d.id===discId);if(!disc)return;
   const subOpts=disc.subtopicos.map(s=>'<option value="'+s.id+'">'+s.nome+'</option>').join('');
