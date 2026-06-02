@@ -243,6 +243,15 @@ button.sm{padding:5px 10px;font-size:12px;}
 .fc-card-hint{position:absolute;bottom:12px;font-size:11px;opacity:.5;}
 .fc-btns{display:flex;gap:10px;justify-content:center;margin-bottom:1.5rem;}
 .fc-progress{font-size:12px;color:var(--text2);text-align:center;margin-bottom:1.5rem;}
+
+.fc-editor-wrap{border:0.5px solid var(--border2);border-radius:var(--radius-sm);overflow:hidden;}
+.fc-toolbar{display:flex;gap:2px;padding:4px 6px;background:var(--bg);border-bottom:0.5px solid var(--border);flex-wrap:wrap;}
+.fc-tb-btn{padding:3px 8px;font-size:12px;background:transparent;border-color:transparent;border-radius:4px;cursor:pointer;color:var(--text2);min-width:28px;text-align:center;}
+.fc-tb-btn:hover{background:var(--bg2);}
+.fc-tb-btn.active{background:var(--blue-bg);color:var(--blue);}
+.fc-editor{min-height:70px;padding:8px 10px;outline:none;font-size:14px;line-height:1.6;color:var(--text);background:var(--bg2);white-space:pre-wrap;word-break:break-word;}
+.fc-color-swatch{width:16px;height:16px;border-radius:3px;display:inline-block;cursor:pointer;border:1.5px solid transparent;vertical-align:middle;}
+.fc-color-swatch:hover,.fc-color-swatch.active{border-color:var(--text);}
 </style>
 </head>
 <body>
@@ -1868,6 +1877,44 @@ function clearHorasTudo(){state.horas=[];save();renderHoras();renderDashboard();
 
 // ── FLASHCARDS ──────────────────────────────────────────────────
 // State: state.fc = { disciplinas: [{id,nome,subtopicos:[{id,nome,cards:[{id,frente,verso,intervalo,proxRevisao,acertos,erros}]}]}] }
+
+function fcEditorHtml(id,placeholder){
+  const colors=['#c9a84c','#E53935','#1D9E75','#378ADD','#7F77DD','#f5f0e8'];
+  const swatches=colors.map(col=>
+    '<span class="fc-color-swatch" style="background:'+col+';" onclick="fcApplyColor(\''+id+'\',\''+col+'\')"></span>'
+  ).join('');
+  return '<div class="fc-editor-wrap">'
+    +'<div class="fc-toolbar">'
+    +'<button class="fc-tb-btn" onclick="document.execCommand(\'bold\')" title="Negrito"><b>N</b></button>'
+    +'<button class="fc-tb-btn" onclick="document.execCommand(\'italic\')" title="Itálico"><i>I</i></button>'
+    +'<button class="fc-tb-btn" onclick="document.execCommand(\'underline\')" title="Sublinhado"><u>S</u></button>'
+    +'<span style="width:1px;background:var(--border);margin:2px 4px;"></span>'
+    +swatches
+    +'<span style="width:1px;background:var(--border);margin:2px 4px;"></span>'
+    +'<button class="fc-tb-btn" onclick="fcApplyColor(\''+id+'\',\'inherit\')" title="Remover cor" style="font-size:10px;">✕ cor</button>'
+    +'</div>'
+    +'<div class="fc-editor" id="'+id+'" contenteditable="true" '
+    +'data-placeholder="'+placeholder+'" '
+    +'style="min-height:70px;" '
+    +'onblur="fcEditorBlur(this)">'
+    +'</div></div>';
+}
+function fcApplyColor(editorId,color){
+  const el=document.getElementById(editorId);
+  if(el)el.focus();
+  document.execCommand('foreColor',false,color==='inherit'?'#'+((document.documentElement.getAttribute('data-theme')==='dark')?'f0ece4':'1a2420'):color);
+}
+function fcEditorBlur(el){
+  if(el.innerHTML==='<br>'||el.innerHTML==='')el.innerHTML='';
+}
+function fcGetEditorVal(id){
+  const el=document.getElementById(id);
+  return el?el.innerHTML.trim():'';
+}
+function fcSetEditorVal(id,html){
+  const el=document.getElementById(id);
+  if(el)el.innerHTML=html||'';
+}
 function fcInit(){
   if(!state.fc)state.fc={disciplinas:[]};
   fcRenderList();
@@ -1901,13 +1948,11 @@ function fcRenderList(){
   el.innerHTML=state.fc.disciplinas.map(disc=>{
     const totalCards=disc.subtopicos.reduce((s,st)=>s+st.cards.length,0);
     const dueCards=disc.subtopicos.reduce((s,st)=>s+st.cards.filter(fcDueToday).length,0);
-    const dueBadge=dueCards>0?(' <span style="color:#c9a84c;font-weight:600;">'+dueCards+' para revisar</span>'):'';
     const subItems=disc.subtopicos.map(st=>{
       const due=st.cards.filter(fcDueToday).length;
-      const dueSub=due>0?(' <span style="color:#c9a84c;">'+due+' hoje</span>'):'';
       return '<div class="fc-sub-item" onclick="fcStartReview('+disc.id+','+st.id+')">'
         +'<span class="fc-sub-name">'+st.nome+'</span>'
-        +'<span class="fc-sub-stats">'+st.cards.length+' cards'+dueSub+'</span>'
+        +'<span class="fc-sub-stats" style="display:flex;gap:5px;">'+'<span style="color:#378ADD;font-weight:600;">'+st.cards.length+'</span>'+'<span style="color:#1D9E75;font-weight:600;">'+due+'</span>'+'</span>'
         // "+" button to add flashcard directly on subtopic row
         +'<button onclick="event.stopPropagation();fcOpenAddCardSub('+disc.id+','+st.id+')" title="Adicionar flashcard" '
         +'style="width:24px;height:24px;padding:0;display:flex;align-items:center;justify-content:center;'
@@ -1920,7 +1965,7 @@ function fcRenderList(){
     return '<div class="fc-disc-card">'
       +'<div class="fc-disc-header" onclick="fcToggleDisc('+disc.id+')">'
       +'<span class="fc-disc-name">'+disc.nome+'</span>'
-      +'<span class="fc-disc-meta">'+totalCards+' cards'+dueBadge+'</span>'
+      +'<span class="fc-disc-meta" style="display:flex;gap:6px;">'+'<span style="color:#378ADD;font-weight:600;font-size:13px;">'+totalCards+'</span>'+'<span style="color:#1D9E75;font-weight:600;font-size:13px;">'+dueCards+'</span>'+'</span>'
       +'<div style="display:flex;gap:5px;align-items:center;">'
       // "+" square to add subtopic
       +'<button onclick="event.stopPropagation();fcPromptAddSub('+disc.id+')" title="Adicionar subtopico" '
@@ -1989,18 +2034,16 @@ function fcOpenAddCardSub(discId,subId){
   const disc=state.fc.disciplinas.find(d=>d.id===discId);if(!disc)return;
   const sub=disc.subtopicos.find(s=>s.id===subId);if(!sub)return;
   showConfirm('Novo flashcard — '+sub.nome,'','Salvar','',()=>{
-    const frente=(document.getElementById('fc-af-frente')||{}).value.trim();
-    const verso=(document.getElementById('fc-af-verso')||{}).value.trim();
+    const frente=fcGetEditorVal('fc-af-frente');
+    const verso=fcGetEditorVal('fc-af-verso');
     if(!frente||!verso){alert('Preencha frente e verso.');return;}
     sub.cards.push({id:Date.now(),frente,verso,intervalo:0,proxRevisao:null,acertos:0,erros:0});
     fcSave();
     const _open=fcGetOpenDiscs();fcRenderList();fcRestoreOpenDiscs(_open);
   },
   '<div style="display:flex;flex-direction:column;gap:10px;">'
-  +'<div><span class="fg-label">Frente (pergunta)</span>'
-  +'<textarea id="fc-af-frente" rows="3" style="width:100%;resize:vertical;"></textarea></div>'
-  +'<div><span class="fg-label">Verso (resposta)</span>'
-  +'<textarea id="fc-af-verso" rows="3" style="width:100%;resize:vertical;"></textarea></div>'
+  +'<div><span class="fg-label">Frente (pergunta)</span>'+fcEditorHtml('fc-af-frente','Pergunta ou ponto que errou...')+'</div>'
+  +'<div><span class="fg-label">Verso (resposta)</span>'+fcEditorHtml('fc-af-verso','Gabarito ou explicacao...')+'</div>'
   +'</div>'
   );
 }
@@ -2012,8 +2055,8 @@ function fcOpenAddCardGlobal(){
   showConfirm('Novo flashcard','','Salvar','',()=>{
     const dId=parseInt((document.getElementById('fc-ag-disc')||{}).value)||null;
     const sId=parseInt((document.getElementById('fc-ag-sub')||{}).value)||null;
-    const frente=(document.getElementById('fc-ag-frente')||{}).value.trim();
-    const verso=(document.getElementById('fc-ag-verso')||{}).value.trim();
+    const frente=fcGetEditorVal('fc-ag-frente');
+    const verso=fcGetEditorVal('fc-ag-verso');
     if(!frente||!verso){alert('Preencha frente e verso.');return;}
     const disc=state.fc.disciplinas.find(d=>d.id===dId);if(!disc)return;
     const sub=disc.subtopicos.find(s=>s.id===sId);if(!sub){alert('Selecione um subtopico.');return;}
@@ -2026,10 +2069,8 @@ function fcOpenAddCardGlobal(){
   +'<select id="fc-ag-disc" onchange="fcUpdateAgSub()" style="width:100%;">'+discOpts+'</select></div>'
   +'<div><span class="fg-label">Subtopico</span>'
   +'<select id="fc-ag-sub" style="width:100%;"></select></div>'
-  +'<div><span class="fg-label">Frente (pergunta)</span>'
-  +'<textarea id="fc-ag-frente" rows="3" style="width:100%;resize:vertical;"></textarea></div>'
-  +'<div><span class="fg-label">Verso (resposta)</span>'
-  +'<textarea id="fc-ag-verso" rows="3" style="width:100%;resize:vertical;"></textarea></div>'
+  +'<div><span class="fg-label">Frente (pergunta)</span>'+fcEditorHtml('fc-ag-frente','Pergunta ou ponto que errou...')+'</div>'
+  +'<div><span class="fg-label">Verso (resposta)</span>'+fcEditorHtml('fc-ag-verso','Gabarito ou explicacao...')+'</div>'
   +'</div>'
   );
   setTimeout(()=>fcUpdateAgSub(),50);
@@ -2180,8 +2221,8 @@ function fcShowCard(){
   const {queue,current,acertos,erros}=fcSession;
   if(current>=queue.length){fcFinish();return;}
   const card=queue[current];
-  document.getElementById('fc-frente-text').textContent=card.frente;
-  document.getElementById('fc-verso-text').textContent=card.verso;
+  document.getElementById('fc-frente-text').innerHTML=card.frente;
+  document.getElementById('fc-verso-text').innerHTML=card.verso;
   document.getElementById('fc-flip-card').classList.remove('flipped');
   document.getElementById('fc-answer-btns').style.display='none';
   const total=queue.length;
