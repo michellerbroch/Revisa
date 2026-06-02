@@ -1883,41 +1883,37 @@ function clearHorasTudo(){state.horas=[];save();renderHoras();renderDashboard();
 function fcEditorHtml(id,placeholder){
   const colors=['#FFD600','#FF7043','#69F0AE','#40C4FF','#E040FB','#CCFF90'];
   const swatches=colors.map(col=>
-    '<span class="fc-color-swatch" style="background:'+col+';" onclick="fcApplyColor(\''+id+'\',\''+col+'\')"></span>'
+    '<span class="fc-color-swatch" style="background:'+col+';" onmousedown="event.preventDefault();fcApplyColor(\''+id+'\',\''+col+'\')" ontouchend="event.preventDefault();fcApplyColor(\''+id+'\',\''+col+'\')" ></span>'
   ).join('');
   return '<div class="fc-editor-wrap">'
     +'<div class="fc-toolbar">'
-    +'<button class="fc-tb-btn" onclick="document.execCommand(\'bold\')" title="Negrito"><b>N</b></button>'
-    +'<button class="fc-tb-btn" onclick="document.execCommand(\'italic\')" title="Itálico"><i>I</i></button>'
-    +'<button class="fc-tb-btn" onclick="document.execCommand(\'underline\')" title="Sublinhado"><u>S</u></button>'
+    +'<button class="fc-tb-btn" onmousedown="event.preventDefault();document.execCommand(\'bold\')" ontouchend="event.preventDefault();document.execCommand(\'bold\')" title="Negrito"><b>N</b></button>'
+    +'<button class="fc-tb-btn" onmousedown="event.preventDefault();document.execCommand(\'italic\')" ontouchend="event.preventDefault();document.execCommand(\'italic\')" title="Itálico"><i>I</i></button>'
+    +'<button class="fc-tb-btn" onmousedown="event.preventDefault();document.execCommand(\'underline\')" ontouchend="event.preventDefault();document.execCommand(\'underline\')" title="Sublinhado"><u>S</u></button>'
     +'<span style="width:1px;background:var(--border);margin:2px 4px;"></span>'
     +swatches
     +'<span style="width:1px;background:var(--border);margin:2px 4px;"></span>'
-    +'<button class="fc-tb-btn" onclick="fcApplyColor(\''+id+'\',\'remove\')" title="Remover marca texto" style="font-size:10px;">✕ marca</button>'
+    +'<button class="fc-tb-btn" onmousedown="event.preventDefault();fcApplyColor(\''+id+'\',\'remove\')" ontouchend="event.preventDefault();fcApplyColor(\''+id+'\',\'remove\')" style="font-size:10px;">✕ marca</button>'
     +'</div>'
     +'<div class="fc-editor" id="'+id+'" contenteditable="true" '
     +'data-placeholder="'+placeholder+'" '
-    +'style="min-height:70px;" '
+    +'style="min-height:100px;" '
     +'onblur="fcEditorBlur(this)">'
-    +'<div style="font-size:10px;color:var(--text2);padding:3px 8px 4px;background:var(--bg);">Selecione o texto e clique na cor para destacar</div>'
-  +'</div></div>';
+    +'</div>'
+    +'</div>';
 }
 function fcApplyColor(editorId,color){
   const sel=window.getSelection();
-  if(!sel||sel.isCollapsed)return;
-  const el=document.getElementById(editorId);
-  if(el&&!el.contains(sel.anchorNode))return;
+  if(!sel||sel.rangeCount===0||sel.isCollapsed)return;
   if(color==='remove'){
-    // Remove highlight and reset text color to default
-    document.execCommand('hiliteColor',false,'transparent');
-    document.execCommand('backColor',false,'transparent');
-    document.execCommand('removeFormat',false,null);
+    document.execCommand('removeFormat');
   }else{
-    // Apply highlight
-    const applied=document.execCommand('hiliteColor',false,color);
-    if(!applied)document.execCommand('backColor',false,color);
-    // Force dark text on highlight so readable in all themes
-    document.execCommand('foreColor',false,'#111111');
+    // Try hiliteColor first (standard), fallback to backColor
+    if(!document.execCommand('hiliteColor',false,color)){
+      document.execCommand('backColor',false,color);
+    }
+    // Ensure dark text on highlight for readability
+    document.execCommand('foreColor',false,'#111');
   }
 }
 function fcEditorBlur(el){
@@ -1995,8 +1991,7 @@ function fcRenderList(){
       +'</div></div>'
       +'<div class="fc-sub-body" id="fc-sub-'+disc.id+'" style="display:none;">'
       +subItems
-      +'<div style="font-size:10px;color:var(--text2);padding:3px 8px 4px;background:var(--bg);">Selecione o texto e clique na cor para destacar</div>'
-  +'</div></div>';
+      +'</div>';
   }).join('');
 }
 function fcToggleDisc(discId){
