@@ -417,7 +417,7 @@ button.sm{padding:5px 10px;font-size:12px;}
 
 <!-- MODAL CONFIRM / DISC -->
 
-<div class="modal-overlay" id="confirm-overlay" onclick="closeConfirm(event)">
+<div class="modal-overlay" id="confirm-overlay">
   <div class="modal" style="max-width:360px;">
     <h3 id="confirm-title">Confirmar</h3>
     <p id="confirm-msg" style="font-size:13px;color:var(--text2);margin-bottom:1.25rem;line-height:1.6;"></p>
@@ -1898,7 +1898,8 @@ function fcEditorHtml(id,placeholder){
     +'<div class="fc-editor" id="'+id+'" contenteditable="true" '
     +'data-placeholder="'+placeholder+'" '
     +'style="min-height:100px;" '
-    +'onblur="fcEditorBlur(this)">'
+    +'onblur="fcEditorBlur(this)" '
+    +'onpaste="fcPastePlain(event)">'
     +'</div>'
     +'</div>';
 }
@@ -1915,6 +1916,11 @@ function fcApplyColor(editorId,color){
     // Ensure dark text on highlight for readability
     document.execCommand('foreColor',false,'#111');
   }
+}
+function fcPastePlain(e){
+  e.preventDefault();
+  const text=(e.clipboardData||window.clipboardData).getData('text/plain');
+  document.execCommand('insertText',false,text);
 }
 function fcEditorBlur(el){
   if(el.innerHTML==='<br>'||el.innerHTML==='')el.innerHTML='';
@@ -1969,7 +1975,7 @@ function fcRenderList(){
         +'<button onclick="event.stopPropagation();fcOpenAddCardSub('+disc.id+','+st.id+')" title="Adicionar flashcard" '
         +'style="width:24px;height:24px;padding:0;display:flex;align-items:center;justify-content:center;'
         +'border-radius:6px;font-size:15px;line-height:1;background:transparent;border-color:var(--border);color:var(--text2);">+</button>'
-        +'<button onclick="event.stopPropagation();fcEditSub('+disc.id+','+st.id+')" title="Editar subtopico" '
+        +'<button onclick="event.stopPropagation();fcEditSub('+disc.id+','+st.id+')" title="Editar subtópico" '
         +'style="width:24px;height:24px;padding:0;display:flex;align-items:center;justify-content:center;'
         +'border-radius:6px;font-size:13px;background:transparent;border-color:var(--border);color:var(--text2);">✎</button>'
         +'</div>';
@@ -1980,7 +1986,7 @@ function fcRenderList(){
       +'<span class="fc-disc-meta" style="display:flex;gap:6px;">'+'<span style="color:#378ADD;font-weight:600;font-size:13px;">'+totalCards+'</span>'+'<span style="color:#1D9E75;font-weight:600;font-size:13px;">'+dueCards+'</span>'+'</span>'
       +'<div style="display:flex;gap:5px;align-items:center;">'
       // "+" square to add subtopic
-      +'<button onclick="event.stopPropagation();fcPromptAddSub('+disc.id+')" title="Adicionar subtopico" '
+      +'<button onclick="event.stopPropagation();fcPromptAddSub('+disc.id+')" title="Adicionar subtópico" '
       +'style="width:26px;height:26px;padding:0;display:flex;align-items:center;justify-content:center;'
       +'border-radius:6px;font-size:16px;line-height:1;background:transparent;border-color:var(--border);color:var(--text2);">+</button>'
       // edit disc button (replaces x)
@@ -2034,13 +2040,13 @@ function fcPromptAddSub(discId){
   const arrow=document.getElementById('fc-arrow-'+discId);
   if(body)body.style.display='block';
   if(arrow)arrow.classList.add('open');
-  showConfirm('Novo subtopico','','Adicionar','',()=>{
+  showConfirm('Novo subtópico','','Adicionar','',()=>{
     const inp=document.getElementById('fc-new-sub-inp');
     const nome=(inp?inp.value:'').trim();if(!nome)return;
     disc.subtopicos.push({id:Date.now(),nome,cards:[]});
     fcSave();
     const _open=fcGetOpenDiscs();fcRenderList();fcRestoreOpenDiscs(_open);
-  },'<input type="text" id="fc-new-sub-inp" placeholder="Nome do subtopico" style="width:100%;font-size:14px;"/>');
+  },'<input type="text" id="fc-new-sub-inp" placeholder="Nome do subtópico" style="width:100%;font-size:14px;"/>');
 }
 function fcOpenAddCardSub(discId,subId){
   const disc=state.fc.disciplinas.find(d=>d.id===discId);if(!disc)return;
@@ -2140,7 +2146,7 @@ function fcDeleteDisc(discId){
 function fcEditSub(discId,subId){
   const disc=state.fc.disciplinas.find(d=>d.id===discId);if(!disc)return;
   const sub=disc.subtopicos.find(s=>s.id===subId);if(!sub)return;
-  showConfirm('Editar subtopico','',null,null,null,
+  showConfirm('Editar subtópico','',null,null,null,
     '<div style="display:flex;flex-direction:column;gap:10px;">'
     +'<div><span class="fg-label">Nome do subtopico</span>'
     +'<input type="text" id="fc-edit-sub-name" value="'+sub.nome+'" style="width:100%;"/></div>'
@@ -2169,7 +2175,7 @@ function fcOpenAddCard_OLD(discId){
   const disc=state.fc.disciplinas.find(d=>d.id===discId);if(!disc)return;
   const subOpts=disc.subtopicos.map(s=>'<option value="'+s.id+'">'+s.nome+'</option>').join('');
   if(!subOpts){
-    showConfirm('Sem subtopicos','Adicione um subtopico primeiro.','Ok','',null);return;
+    showConfirm('Sem subtópicos','Adicione um subtópico primeiro.','Ok','',null);return;
   }
   showConfirm('Novo flashcard','','Salvar','',()=>{
     const sId=parseInt(document.getElementById('fc-card-sub2').value)||null;
@@ -2294,28 +2300,28 @@ function fcBackToList(){
 // ── ADD CARD ─────────────────────────────────────────────────
 function fcOpenNewCard(){
   const {discId,subId}=fcSession;
-  const discOpts=(state.fc&&state.fc.disciplinas||[]).map(d=>`<option value="${d.id}" ${d.id===discId?'selected':''}>${d.nome}</option>`).join('');
+  const discOpts=(state.fc&&state.fc.disciplinas||[]).map(d=>'<option value="'+d.id+'" '+(d.id===discId?'selected':'')+'>'+d.nome+'</option>').join('');
   const sub=discId?(state.fc.disciplinas.find(d=>d.id===discId)||{subtopicos:[]}).subtopicos:[];
-  const subOpts=sub.map(s=>`<option value="${s.id}" ${s.id===subId?'selected':''}>${s.nome}</option>`).join('');
+  const subOpts=sub.map(s=>'<option value="'+s.id+'" '+(s.id===subId?'selected':'')+'>'+s.nome+'</option>').join('');
   showConfirm('Novo flashcard','','Salvar','',()=>{
-    const dId=parseInt(document.getElementById('fc-card-disc').value)||null;
-    const sId=parseInt(document.getElementById('fc-card-sub').value)||null;
-    const frente=(document.getElementById('fc-card-frente')||{}).value.trim();
-    const verso=(document.getElementById('fc-card-verso')||{}).value.trim();
+    const dId=parseInt((document.getElementById('fc-card-disc')||{}).value)||null;
+    const sId=parseInt((document.getElementById('fc-card-sub')||{}).value)||null;
+    const frente=fcGetEditorVal('fc-card-frente2');
+    const verso=fcGetEditorVal('fc-card-verso2');
     if(!frente||!verso){alert('Preencha frente e verso.');return;}
     const disc2=state.fc.disciplinas.find(d=>d.id===dId);if(!disc2)return;
     const sub2=disc2.subtopicos.find(s=>s.id===sId);if(!sub2)return;
     sub2.cards.push({id:Date.now(),frente,verso,intervalo:0,proxRevisao:null,acertos:0,erros:0});
     fcSave();
-    // If in review, add to queue
     if(fcSession.subId===sId)fcSession.queue.push(sub2.cards[sub2.cards.length-1]);
   },
-  `<div style="display:flex;flex-direction:column;gap:10px;">
-    <div><span class="fg-label">Disciplina</span><select id="fc-card-disc" onchange="fcUpdateSubSelect()" style="width:100%;">${discOpts}</select></div>
-    <div><span class="fg-label">Subtópico</span><select id="fc-card-sub" style="width:100%;">${subOpts}</select></div>
-    <div><span class="fg-label">Frente (pergunta)</span><textarea id="fc-card-frente" rows="2" style="width:100%;resize:vertical;"></textarea></div>
-    <div><span class="fg-label">Verso (resposta)</span><textarea id="fc-card-verso" rows="2" style="width:100%;resize:vertical;"></textarea></div>
-  </div>`);
+  '<div style="display:flex;flex-direction:column;gap:10px;">'
+  +'<div><span class="fg-label">Disciplina</span><select id="fc-card-disc" onchange="fcUpdateSubSelect()" style="width:100%;">'+discOpts+'</select></div>'
+  +'<div><span class="fg-label">Subtópico</span><select id="fc-card-sub" style="width:100%;">'+subOpts+'</select></div>'
+  +'<div><span class="fg-label">Frente (pergunta)</span>'+fcEditorHtml('fc-card-frente2','Pergunta ou ponto que errou...')+'</div>'
+  +'<div><span class="fg-label">Verso (resposta)</span>'+fcEditorHtml('fc-card-verso2','Gabarito ou explicacao...')+'</div>'
+  +'</div>'
+  );
 }
 function fcUpdateSubSelect(){
   const dId=parseInt(document.getElementById('fc-card-disc').value)||null;
