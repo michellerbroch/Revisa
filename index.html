@@ -216,6 +216,10 @@ button.sm{padding:5px 10px;font-size:12px;}
 [data-theme="dark"] .donut-center-text{fill:#f0ece4;}
 [data-theme="sepia"] .donut-center-text{fill:#2a1f0e;}
 
+
+.period-tabs{display:flex;gap:4px;background:var(--bg2);border-radius:var(--radius-sm);padding:4px;margin-bottom:1rem;}
+.period-tab{flex:1;text-align:center;padding:8px 4px;border-radius:6px;font-size:13px;font-weight:500;color:var(--text2);cursor:pointer;background:transparent;border:none;transition:all .15s;}
+.period-tab.active{background:var(--blue);color:#fff;}
 </style>
 </head>
 <body>
@@ -436,11 +440,23 @@ button.sm{padding:5px 10px;font-size:12px;}
 
   <!-- ROW 3: Tempo estudado | Lembretes -->
   <div class="dash-row dash-row-2">
-    <div class="side-card" id="horas-card" style="text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:120px;">
-      <div class="side-card-title">Tempo estudado</div>
-      <div class="horas-big" id="dash-horas-total">0h</div>
-      <div class="horas-sub">acumulado total</div>
-      <div style="margin-top:8px;font-size:11px;" id="dash-horas-semana"></div>
+    <div class="side-card" id="horas-card" style="display:flex;flex-direction:column;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div class="side-card-title" style="margin:0;">Tempo estudado</div>
+        <div style="display:flex;gap:2px;background:var(--bg);border-radius:6px;padding:2px;">
+          <button id="dh-btn-hoje" onclick="setDashHorasPeriod('hoje')" style="font-size:10px;padding:2px 7px;border-radius:4px;background:var(--blue);color:#fff;border:none;cursor:pointer;">Hoje</button>
+          <button id="dh-btn-semana" onclick="setDashHorasPeriod('semana')" style="font-size:10px;padding:2px 7px;border-radius:4px;background:transparent;color:var(--text2);border:none;cursor:pointer;">Semana</button>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex:1;">
+        <div style="position:relative;width:80px;height:80px;flex-shrink:0;">
+          <svg id="dash-donut-svg" width="80" height="80" viewBox="0 0 80 80"></svg>
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;">
+            <div id="dash-donut-val" style="font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;"></div>
+          </div>
+        </div>
+        <div id="dash-donut-legend" style="flex:1;font-size:11px;display:flex;flex-direction:column;gap:3px;overflow:hidden;"></div>
+      </div>
     </div>
     <div class="side-card" id="lembretes-card">
       <div class="side-card-title">Lembretes</div>
@@ -508,7 +524,17 @@ button.sm{padding:5px 10px;font-size:12px;}
 <!-- ══ HORAS ══ -->
 <div id="sec-horas" class="section">
 
-  <div class="hours-top">
+  <!-- Period tabs: foco principal -->
+  <div class="period-tabs" id="period-tabs" style="margin-bottom:1.25rem;">
+    <button class="period-tab" onclick="setHorasPeriod('dia')" data-period="dia">Dia</button>
+    <button class="period-tab" onclick="setHorasPeriod('semana')" data-period="semana">Semana</button>
+    <button class="period-tab" onclick="setHorasPeriod('mes')" data-period="mes">Mês</button>
+    <button class="period-tab" onclick="setHorasPeriod('ano')" data-period="ano">Ano</button>
+    <button class="period-tab" onclick="setHorasPeriod('tudo')" data-period="tudo">Tudo</button>
+  </div>
+
+  <!-- Métricas secundárias -->
+  <div class="hours-top" style="margin-bottom:0.75rem;">
     <div class="metric"><div class="metric-label">Total geral</div><div class="metric-value" id="m-total">0h</div></div>
     <div class="metric"><div class="metric-label">Esta semana</div><div class="metric-value" id="m-semana">0h</div></div>
     <div class="metric"><div class="metric-label">Este mês</div><div class="metric-value" id="m-mes">0h</div></div>
@@ -519,13 +545,13 @@ button.sm{padding:5px 10px;font-size:12px;}
   </div>
   <div class="hours-layout">
     <div class="card">
-      <h3>Horas por disciplina</h3>
+      <h3 id="donut-period-label">Horas por disciplina</h3>
       <div class="donut-wrap">
         <div style="position:relative;width:160px;height:160px;flex-shrink:0;">
           <svg id="donut-svg" width="160" height="160" viewBox="0 0 160 160"></svg>
           <div id="donut-center-text" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;line-height:1.2;">
             <div id="donut-total-val" style="font-size:17px;font-weight:700;color:var(--text);"></div>
-            <div style="font-size:10px;color:var(--text2);">total</div>
+            <div style="font-size:10px;color:var(--text2);" id="donut-total-sub">total</div>
           </div>
         </div>
         <div class="donut-legend" id="donut-legend"></div>
@@ -1038,8 +1064,10 @@ function applyAccentColors(){
   if(cdDays)cdDays.style.color=countdownColor;
 
   // horas: big total number only
-  const hBig=document.getElementById('dash-horas-total');
+  const hBig=document.getElementById('dash-horas-hoje');
+  const hBig2=document.getElementById('dash-horas-semana-big');
   if(hBig)hBig.style.color=horasColor;
+  if(hBig2)hBig2.style.color=horasColor;
 
   // revisoes: block title
   const revTitle=document.querySelector('#rev-card .side-card-title');
@@ -1053,12 +1081,10 @@ function renderDashboard(){
   applyMuralImage();
   renderCountdown();
 
-  // horas
-  const totalH=state.horas.reduce((a,h)=>a+h.horas,0);
-  document.getElementById('dash-horas-total').textContent=formatH(totalH);
-  const week=startOfWeek();
-  const semH=state.horas.filter(h=>h.data>=week).reduce((a,h)=>a+h.horas,0);
-  document.getElementById('dash-horas-semana').textContent=semH>0?'Esta semana: '+formatH(semH):'';
+  // horas: hoje + esta semana
+  const today2=todayStr();
+  const hojeH=state.horas.filter(h=>h.data===today2).reduce((a,h)=>a+h.horas,0);
+  renderDashMiniDonut();
 
   // revisões de hoje + pendentes
   const today=todayStr();
@@ -1689,6 +1715,86 @@ function drawDonut(byDisc){
       <span style="color:#999;font-size:12px;">${formatH(val)} &nbsp;${Math.round(val/total*100)}%</span>
     </div>`).join('');
 }
+
+
+// ── MURAL MINI DONUT ──────────────────────────────────
+let dashHorasPeriod='hoje';
+function setDashHorasPeriod(p){
+  dashHorasPeriod=p;
+  const btns=['hoje','semana'];
+  btns.forEach(b=>{
+    const el=document.getElementById('dh-btn-'+b);
+    if(!el)return;
+    const active=b===p;
+    el.style.background=active?'var(--blue)':'transparent';
+    el.style.color=active?'#fff':'var(--text2)';
+  });
+  renderDashMiniDonut();
+}
+function renderDashMiniDonut(){
+  const svg=document.getElementById('dash-donut-svg');
+  const valEl=document.getElementById('dash-donut-val');
+  const leg=document.getElementById('dash-donut-legend');
+  if(!svg)return;
+  const today=todayStr(), week=startOfWeek();
+  const filtered=dashHorasPeriod==='hoje'
+    ?state.horas.filter(h=>h.data===today)
+    :state.horas.filter(h=>h.data>=week);
+  const byDisc={};
+  filtered.forEach(h=>{byDisc[h.disc]=(byDisc[h.disc]||0)+h.horas;});
+  const entries=Object.entries(byDisc).sort((a,b)=>b[1]-a[1]);
+  const total=entries.reduce((s,[,v])=>s+v,0);
+  if(!entries.length){
+    svg.innerHTML='<circle cx="40" cy="40" r="28" fill="none" stroke="var(--border)" stroke-width="12"/>';
+    if(valEl)valEl.textContent='0h';
+    if(leg)leg.innerHTML='<span style="color:var(--text2);">Sem registros</span>';
+    return;
+  }
+  if(valEl)valEl.textContent=formatH(total);
+  // mini donut
+  const cx=40,cy=40,R=34,r=22;
+  let html='',angle=-Math.PI/2;
+  entries.forEach(([disc,val])=>{
+    const sweep=entries.length===1?Math.PI*1.9999:(val/total)*2*Math.PI;
+    html+=donutSlice(cx,cy,R,r,angle,angle+sweep,getColorForDiscName(disc));
+    angle+=(val/total)*2*Math.PI;
+  });
+  svg.innerHTML=html;
+  // legend (max 3 items)
+  if(leg)leg.innerHTML=entries.slice(0,3).map(([disc,val])=>
+    '<div style="display:flex;align-items:center;gap:5px;overflow:hidden;">'
+    +'<span style="width:7px;height:7px;border-radius:50%;background:'+getColorForDiscName(disc)+';flex-shrink:0;display:inline-block;"></span>'
+    +'<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);">'+disc+'</span>'
+    +'<span style="color:var(--text2);flex-shrink:0;">'+formatH(val)+'</span>'
+    +'</div>'
+  ).join('');
+}
+// ── HORAS: filtro de período (Dia/Semana/Mês/Ano/Tudo) ──
+let horasPeriod='dia';
+function setHorasPeriod(p){
+  horasPeriod=p;
+  document.querySelectorAll('.period-tab').forEach(b=>{
+    b.classList.toggle('active',b.dataset.period===p);
+  });
+  renderHorasFiltered();
+}
+function getHorasPeriodRange(p){
+  const today=todayStr();
+  if(p==='dia')return {from:today,to:today,label:'hoje'};
+  if(p==='semana')return {from:startOfWeek(),to:today,label:'esta semana'};
+  if(p==='mes')return {from:today.slice(0,7)+'-01',to:today,label:'este mes'};
+  if(p==='ano')return {from:today.slice(0,4)+'-01-01',to:today,label:'este ano'};
+  return {from:'0000-01-01',to:'9999-12-31',label:'total'};
+}
+function renderHorasFiltered(){
+  const range=getHorasPeriodRange(horasPeriod);
+  const filtered=state.horas.filter(h=>h.data>=range.from&&h.data<=range.to);
+  const byDisc={};filtered.forEach(h=>{byDisc[h.disc]=(byDisc[h.disc]||0)+h.horas;});
+  const sub=document.getElementById('donut-total-sub');
+  if(sub)sub.textContent=range.label;
+  drawDonut(byDisc);
+}
+
 function renderHoras(){
   const today=todayStr(),week=startOfWeek(),month=today.slice(0,7);
   const total=state.horas.reduce((a,h)=>a+h.horas,0);
@@ -1699,7 +1805,10 @@ function renderHoras(){
   document.getElementById('m-semana').textContent=formatH(semana);
   document.getElementById('m-mes').textContent=formatH(mes);
   document.getElementById('m-discs').textContent=Object.keys(byDisc).length;
-  drawDonut(byDisc);
+  renderHorasFiltered();
+  // ensure active tab visual on first load
+  const activeBtn=document.querySelector('.period-tab[data-period="'+horasPeriod+'"]');
+  if(activeBtn&&!document.querySelector('.period-tab.active'))activeBtn.classList.add('active');
   const log=document.getElementById('log-list');
   if(!state.horas.length){log.innerHTML='<div class="empty-state">Nenhum registro ainda.</div>';return;}
   log.innerHTML=state.horas.slice(0,50).map(h=>`<div class="log-item"><div style="flex:1;"><div style="font-size:13px;font-weight:500;">${h.disc} — ${formatH(h.horas)}</div><div class="log-meta">${h.data.split('-').reverse().join('/')}</div>${h.nota?`<div class="log-note">"${h.nota}"</div>`:''}${h.fromPomodoro?'<span class="log-source" style="background:#e0f3fb;color:#1a7aad;border-color:#a8d8f0;">via pomodoro</span>':h.fromRevisao?'<span class="log-source">via revisões</span>':''}</div><button class="icon-btn" onclick="openModal('hora',${h.id})">✎</button></div>`).join('');
