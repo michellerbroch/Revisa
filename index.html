@@ -300,18 +300,7 @@ button.sm{padding:5px 10px;font-size:12px;}
         <div class="mural-grid" id="mural-grid" style="margin-top:8px;display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:6px;"></div>
       </div>
 
-      <!-- estilo frase -->
-      <div>
-        <div class="fg-label" style="margin-bottom:8px;">Estilo da frase sobre a imagem</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px;">
-          <label style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--bg2);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;"><input type="radio" name="quote-style" value="default" style="width:auto;accent-color:var(--blue);"/> Padrão</label>
-          <label style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--bg2);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;"><input type="radio" name="quote-style" value="blur" style="width:auto;accent-color:var(--blue);"/> Embaçado</label>
-          <label style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--bg2);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;"><input type="radio" name="quote-style" value="card" style="width:auto;accent-color:var(--blue);"/> Card claro</label>
-          <label style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--bg2);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;"><input type="radio" name="quote-style" value="dark" style="width:auto;accent-color:var(--blue);"/> Muito escuro</label>
-          <label style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--bg2);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;"><input type="radio" name="quote-style" value="minimal" style="width:auto;accent-color:var(--blue);"/> Minimalista</label>
-          <label style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--bg2);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;"><input type="radio" name="quote-style" value="none" style="width:auto;accent-color:var(--blue);"/> Sem overlay</label>
-        </div>
-      </div>
+
 
       <!-- frases -->
       <div>
@@ -364,15 +353,7 @@ button.sm{padding:5px 10px;font-size:12px;}
         </div>
       </div>
 
-      <!-- lembretes -->
-      <div>
-        <div class="fg-label" style="margin-bottom:6px;">Lembretes</div>
-        <div style="display:flex;gap:6px;margin-bottom:8px;">
-          <input type="text" id="novo-lembrete" placeholder="Novo lembrete..." style="flex:1;"/>
-          <button class="sm primary" onclick="addLembrete()">+</button>
-        </div>
-        <div id="lembretes-edit-list" style="display:flex;flex-direction:column;gap:4px;max-height:120px;overflow-y:auto;"></div>
-      </div>
+
     </div>
     <div class="modal-actions">
       <button onclick="closeMuralModal()">Cancelar</button>
@@ -459,7 +440,10 @@ button.sm{padding:5px 10px;font-size:12px;}
       </div>
     </div>
     <div class="side-card" id="lembretes-card">
-      <div class="side-card-title">Lembretes</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div class="side-card-title" style="margin:0;">Lembretes</div>
+        <button onclick="lembreteAdd()" style="width:24px;height:24px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:6px;font-size:16px;background:transparent;border-color:var(--border);color:var(--text2);">+</button>
+      </div>
       <div class="lembrete-list" id="lembretes-view">
         <div style="font-size:12px;color:var(--text2);">Nenhum lembrete.</div>
       </div>
@@ -898,9 +882,7 @@ function openMuralModal(){
   document.getElementById('color-lembretes').value=muralDraft.colors.lembretes||'#BA7517';
   document.getElementById('nova-frase-texto').value='';
   document.getElementById('nova-frase-autor').value='';
-  document.getElementById('novo-lembrete').value='';
   renderFrasesEdit();
-  renderLembretesEdit();
   renderMuralImages();
   document.getElementById('mural-modal-overlay').classList.add('open');
 }
@@ -954,29 +936,7 @@ function renderFrasesEdit(){
     </div>`).join('');
 }
 
-function addLembrete(){
-  const inp=document.getElementById('novo-lembrete');
-  const txt=inp.value.trim();if(!txt)return;
-  const editIdx=inp.dataset.editIdx;
-  if(editIdx!==undefined&&editIdx!==''){muralDraft.lembretes[parseInt(editIdx)]=txt;delete inp.dataset.editIdx;}
-  else{muralDraft.lembretes.push(txt);}
-  inp.value='';renderLembretesEdit();
-}
-function editLembrete(i){
-  const inp=document.getElementById('novo-lembrete');
-  inp.value=muralDraft.lembretes[i];inp.dataset.editIdx=i;inp.focus();
-}
-function removeLembrete(i){muralDraft.lembretes.splice(i,1);renderLembretesEdit();}
-function renderLembretesEdit(){
-  const el=document.getElementById('lembretes-edit-list');
-  if(!muralDraft.lembretes.length){el.innerHTML='<div style="font-size:12px;color:var(--text2);">Nenhum lembrete.</div>';return;}
-  el.innerHTML=muralDraft.lembretes.map((l,i)=>`
-    <div style="display:flex;align-items:center;gap:6px;padding:4px 8px;background:var(--bg2);border-radius:var(--radius-sm);">
-      <span style="flex:1;font-size:12px;">${l}</span>
-      <button class="sm" onclick="editLembrete(${i})" style="padding:2px 5px;font-size:11px;">✎</button>
-      <button class="sm" onclick="removeLembrete(${i})" style="color:#A32D2D;border-color:#E8B4B4;background:#FCEBEB;padding:2px 6px;font-size:11px;">✕</button>
-    </div>`).join('');
-}
+// lembretes gerenciados diretamente no mural
 
 function addMuralImage(evt){
   const reader=new FileReader();
@@ -1034,10 +994,17 @@ function renderCountdown(){
   const cdDays=document.getElementById('cd-days');
   const cdUnit=document.getElementById('cd-unit');
   const cdLabel=document.getElementById('cd-label');
-  if(!state.provaData||!state.provaNome){
+  if(!state.provaNome){
     cdProva.textContent='Nenhuma prova';
-    cdDays.textContent='—';
-    cdUnit.textContent='configure em Personalizar mural';
+    cdDays.textContent='';
+    cdUnit.textContent='';
+    cdLabel.textContent='Próxima prova';
+    return;
+  }
+  if(state.provaNome&&!state.provaData){
+    cdProva.textContent=state.provaNome;
+    cdDays.textContent='';
+    cdUnit.textContent='';
     cdLabel.textContent='Próxima prova';
     return;
   }
@@ -1119,12 +1086,17 @@ function renderDashboard(){
     if(pendingRevs.length){
       html+=`<div style="border-top:1px solid var(--border);margin:8px 0 6px;"></div>
         <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#A32D2D;margin-bottom:4px;">Pendentes (${pendingRevs.length})</div>`;
-      html+=pendingRevs.slice(0,5).map(({r,typeIdx,date})=>`
-        <div class="today-rev-item">
-          <input class="today-rev-check" type="checkbox" onchange="toggleDone(${r.id},${typeIdx})" title="Marcar revisão"/>
-          <span class="today-rev-label" style="color:var(--text2);">${buildChipLabel(r)}</span>
-          <span class="today-rev-badge" style="background:#FCEBEB;color:#A32D2D;">${labels[typeIdx]}</span>
-        </div>`).join('');
+      pendingRevs.slice(0,5).forEach(function(item){
+        const r=item.r,typeIdx=item.typeIdx,date=item.date;
+        const daysLate=Math.round((new Date(todayStr())-new Date(date))/(1000*60*60*24));
+        const lateTag=daysLate>0?('<span style="color:#A32D2D;font-size:10px;font-weight:600;margin:0 4px;">'+daysLate+'d</span>'):'';
+        html+='<div class="today-rev-item">'
+          +'<input class="today-rev-check" type="checkbox" onchange="toggleDone('+r.id+','+typeIdx+')" title="Marcar revisão"/>'
+          +'<span class="today-rev-label" style="color:var(--text2);">'+buildChipLabel(r)+'</span>'
+          +lateTag
+          +'<span class="today-rev-badge" style="background:#FCEBEB;color:#A32D2D;">'+labels[typeIdx]+'</span>'
+          +'</div>';
+      });
       if(pendingRevs.length>5){
         html+=`<div style="font-size:11px;color:var(--text2);margin-top:4px;">+ ${pendingRevs.length-5} pendentes anteriores</div>`;
       }
@@ -1717,6 +1689,38 @@ function drawDonut(byDisc){
 }
 
 
+
+// ── LEMBRETES direto no mural ──────────────────────────
+function lembreteAdd(){
+  showConfirm('Novo lembrete','','Salvar','',()=>{
+    const v=(document.getElementById('lem-inp')||{}).value.trim();
+    if(!v)return;
+    state.lembretes.push(v);
+    save();renderDashboard();
+  },'<input type="text" id="lem-inp" placeholder="Digite o lembrete..." style="width:100%;font-size:14px;"/>');
+}
+function lembreteEdit(i){
+  const txt=state.lembretes[i]||'';
+  showConfirm('Editar lembrete','',null,null,null,
+    '<div style="display:flex;flex-direction:column;gap:10px;">'
+    +'<input type="text" id="lem-edit-inp" value="'+txt+'" style="width:100%;font-size:14px;"/>'
+    +'<button onclick="lembreteSave('+i+')" style="width:100%;justify-content:center;background:var(--blue);color:#fff;border-color:var(--blue);">Salvar</button>'
+    +'<button onclick="lembreteDelete('+i+')" style="width:100%;justify-content:center;background:#FCEBEB;color:#A32D2D;border-color:#E8B4B4;">Excluir lembrete</button>'
+    +'</div>'
+  );
+}
+function lembreteSave(i){
+  const v=(document.getElementById('lem-edit-inp')||{}).value.trim();
+  if(!v)return;
+  state.lembretes[i]=v;
+  document.getElementById('confirm-overlay').classList.remove('open');
+  save();renderDashboard();
+}
+function lembreteDelete(i){
+  state.lembretes.splice(i,1);
+  document.getElementById('confirm-overlay').classList.remove('open');
+  save();renderDashboard();
+}
 // ── MURAL MINI DONUT ──────────────────────────────────
 let dashHorasPeriod='hoje';
 function setDashHorasPeriod(p){
@@ -1765,7 +1769,7 @@ function renderDashMiniDonut(){
     '<div style="display:flex;align-items:center;gap:5px;overflow:hidden;">'
     +'<span style="width:7px;height:7px;border-radius:50%;background:'+getColorForDiscName(disc)+';flex-shrink:0;display:inline-block;"></span>'
     +'<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);">'+disc+'</span>'
-    +'<span style="color:var(--text2);flex-shrink:0;">'+formatH(val)+'</span>'
+    +'<span style="color:var(--text2);">'+formatH(val)+'</span>'
     +'</div>'
   ).join('');
 }
