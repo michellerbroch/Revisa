@@ -77,7 +77,7 @@ button.sm{padding:5px 10px;font-size:12px;}
 
 /* COUNTDOWN */
 .countdown-label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;opacity:.75;margin-bottom:4px;}
-.countdown-prova{font-size:14px;font-weight:600;margin-bottom:6px;}
+.countdown-prova{font-size:20px;font-weight:700;margin-bottom:6px;}
 .countdown-days{font-size:42px;font-weight:800;line-height:1.05;}
 .countdown-unit{font-size:12px;opacity:.7;margin-top:3px;}
 
@@ -1107,7 +1107,13 @@ function renderDashboard(){
   // lembretes
   const lemEl=document.getElementById('lembretes-view');
   if(!state.lembretes.length){lemEl.innerHTML='<div style="font-size:12px;color:var(--text2);">Nenhum lembrete.</div>';}
-  else lemEl.innerHTML=state.lembretes.map(l=>`<div class="lembrete-item"><span class="lembrete-dot"></span><span>${l}</span></div>`).join('');
+  else lemEl.innerHTML=state.lembretes.map((l,i)=>
+    '<div class="lembrete-item" style="display:flex;align-items:flex-start;gap:6px;">'
+    +'<span class="lembrete-dot" style="margin-top:5px;"></span>'
+    +'<span style="font-size:12px;flex:1;line-height:1.4;">'+l+'</span>'
+    +'<button onclick="lembreteEdit('+i+')" title="Editar" style="width:20px;height:20px;padding:0;display:flex;align-items:center;justify-content:center;background:transparent;border-color:transparent;font-size:11px;color:var(--text2);flex-shrink:0;">✎</button>'
+    +'</div>'
+  ).join('');
 
   // apply accent colors AFTER all DOM is built
   applyAccentColors();
@@ -1766,10 +1772,10 @@ function renderDashMiniDonut(){
   svg.innerHTML=html;
   // legend (max 3 items)
   if(leg)leg.innerHTML=entries.slice(0,3).map(([disc,val])=>
-    '<div style="display:flex;align-items:center;gap:5px;overflow:hidden;">'
+    '<div style="display:flex;align-items:center;gap:5px;overflow:hidden;justify-content:flex-end;">'
     +'<span style="width:7px;height:7px;border-radius:50%;background:'+getColorForDiscName(disc)+';flex-shrink:0;display:inline-block;"></span>'
-    +'<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);">'+disc+'</span>'
-    +'<span style="color:var(--text2);">'+formatH(val)+'</span>'
+    +'<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);margin-right:4px;">'+disc+'</span>'
+    +'<span style="color:var(--text2);white-space:nowrap;">'+formatH(val)+'</span>'
     +'</div>'
   ).join('');
 }
