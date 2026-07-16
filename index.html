@@ -220,6 +220,13 @@ button.sm{padding:5px 10px;font-size:12px;}
 .period-tabs{display:flex;gap:4px;background:var(--bg2);border-radius:var(--radius-sm);padding:4px;margin-bottom:1rem;}
 .period-tab{flex:1;text-align:center;padding:8px 4px;border-radius:6px;font-size:13px;font-weight:500;color:var(--text2);cursor:pointer;background:transparent;border:none;transition:all .15s;}
 .period-tab.active{background:var(--blue);color:#fff;}
+
+/* ── Bar Chart ── */
+.bar-chart-wrap{width:100%;overflow:hidden;}
+.bar-chart-svg{width:100%;overflow:visible;}
+.bar-day-label{font-size:9px;fill:var(--text2,#888);text-anchor:middle;}
+.bar-val-label{font-size:9px;fill:var(--text2,#888);text-anchor:middle;}
+.bar-today rect{filter:brightness(1.15);}
 </style>
 </head>
 <body>
@@ -484,7 +491,8 @@ button.sm{padding:5px 10px;font-size:12px;}
       </div>
       <div class="form-divider">Detalhes</div>
       <div class="form-row">
-        <div class="fg" style="width:90px;"><span class="fg-label">Horas</span><input type="number" id="rev-horas" min="0" step="0.5"/></div>
+        <div class="fg" style="width:70px;"><span class="fg-label">Horas</span><input type="number" id="rev-horas" min="0" max="23" step="1" placeholder="0"/></div>
+        <div class="fg" style="width:70px;"><span class="fg-label">Minutos</span><input type="number" id="rev-min" min="0" max="59" step="5" placeholder="0"/></div>
         <div class="fg grow"><span class="fg-label">Data estudada</span><input type="date" id="rev-data"/></div>
       </div>
       <div style="display:flex;justify-content:flex-end;">
@@ -526,6 +534,13 @@ button.sm{padding:5px 10px;font-size:12px;}
   </div>
   <div style="display:flex;justify-content:flex-end;margin-bottom:1rem;">
     <button onclick="confirmClearHoras()" style="font-size:12px;color:var(--text2);background:transparent;border-color:transparent;padding:4px 0;">Limpar histórico</button>
+  </div>
+  <!-- Bar chart card -->
+  <div class="card" style="margin-bottom:1rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <h3 style="margin:0;" id="bar-chart-title">Horas por dia</h3>
+    </div>
+    <div class="bar-chart-wrap"><svg id="bar-chart-svg" height="120" class="bar-chart-svg"></svg></div>
   </div>
   <div class="hours-layout">
     <div class="card">
@@ -1186,14 +1201,14 @@ function openModal(type,id){
         <div style="flex:1;"><span class="fg-label">Do art.</span><select id="m-art-de" onchange="modalEditArtChange()">${artDeOpts}</select></div>
         <div style="flex:1;"><span class="fg-label">Ao art.</span><select id="m-art-ate">${artAteOpts}</select></div>
       </div>
-      <div class="modal-field"><span class="fg-label">Tempo estudado (horas)</span><input type="number" id="m-rev-horas" value="${curHoras}" min="0" step="0.25"/></div>
+      <div class="modal-field" style="display:flex;gap:8px;"><div style="flex:1;"><span class="fg-label">Horas</span><input type="number" id="m-rev-horas" value="${Math.floor(curHoras)}" min="0" max="23" step="1" style="width:100%;"/></div><div style="flex:1;"><span class="fg-label">Minutos</span><input type="number" id="m-rev-min" value="${Math.round((curHoras%1)*60)}" min="0" max="59" step="5" style="width:100%;"/></div></div>
       <div class="modal-field"><span class="fg-label">Data estudada</span><input type="date" id="m-data" value="${r.data}"/></div>`;
   }else{
     const h=state.horas.find(x=>x.id===id);if(!h)return;
     document.getElementById('modal-title').textContent='Editar registro de horas';
     f.innerHTML=`
       <div class="modal-field"><span class="fg-label">Disciplina</span><input type="text" id="m-disc" value="${esc(h.disc)}"/></div>
-      <div class="modal-field"><span class="fg-label">Horas</span><input type="number" id="m-horas" value="${h.horas}" min="0" step="0.5"/></div>
+      <div class="modal-field" style="display:flex;gap:8px;"><div style="flex:1;"><span class="fg-label">Horas</span><input type="number" id="m-horas" value="${Math.floor(h.horas)}" min="0" max="23" step="1" style="width:100%;"/></div><div style="flex:1;"><span class="fg-label">Minutos</span><input type="number" id="m-horas-min" value="${Math.round((h.horas%1)*60)}" min="0" max="59" step="5" style="width:100%;"/></div></div>
       <div class="modal-field"><span class="fg-label">Data</span><input type="date" id="m-data" value="${h.data}"/></div>
       <div class="modal-field"><span class="fg-label">Anotação</span><input type="text" id="m-nota" value="${esc(h.nota||'')}"/></div>`;
   }
@@ -1240,7 +1255,9 @@ function saveModal(){
       r.artigos=newArtDe?getArtigosRange(newArtDe,newArtAte):[];
       if(newDisc&&r.artigos.length)r.artigos.forEach(a=>{if(!newDisc.artigos.includes(a))newDisc.artigos.push(a);});
       // update hours
-      const newHoras=parseFloat(document.getElementById('m-rev-horas').value);
+      const _h=parseInt(document.getElementById('m-rev-horas').value)||0;
+      const _m=parseInt(document.getElementById('m-rev-min').value)||0;
+      const newHoras=_h+(_m/60);
       const hEntry=state.horas.find(h=>h.id===r.id+1);
       if(!isNaN(newHoras)&&newHoras>0){
         if(hEntry){hEntry.horas=newHoras;hEntry.disc=r.discNome||(r.tema||'Estudo');hEntry.nota=buildChipLabel(r);}
@@ -1290,7 +1307,9 @@ function addRevisao(){
   const discId=parseInt(document.getElementById('rev-disc-sel').value)||null;
   const artDe=parseInt(document.getElementById('rev-art-de').value)||null;
   const artAte=parseInt(document.getElementById('rev-art-ate').value)||null;
-  const horas=parseFloat(document.getElementById('rev-horas').value);
+  const horasVal=parseInt(document.getElementById('rev-horas').value)||0;
+  const minVal=parseInt(document.getElementById('rev-min').value)||0;
+  const horas=horasVal+(minVal/60);
   const data=document.getElementById('rev-data').value||todayStr();
   const disc=discId?state.disciplinas.find(d=>d.id===discId):null;
   const discNome=disc?disc.nome:'';
@@ -1307,13 +1326,15 @@ function addRevisao(){
   document.getElementById('rev-tema').value='';document.getElementById('rev-disc-sel').value='';
   document.getElementById('rev-art-de').innerHTML='<option value="">—</option>';document.getElementById('rev-art-ate').innerHTML='<option value="">—</option>';
   document.getElementById('rev-horas').value='';
+  document.getElementById('rev-min').value='';
 }
 // ── POMODORO ──────────────────────────────────────────
 let pomoState={
   running:false, phase:'focus', // focus | short | long
   remaining:25*60, cycle:1,
   focusMin:25, shortMin:5, longMin:15, cyclesCount:4,
-  accumulatedSec:0, sound:'beep',
+  accumulatedSec:0, accumulatedAtStart:0, sound:'beep',
+  startedAt:null, remainingAtStart:0,
   interval:null, initialized:false
 };
 // Pomodoro sound via Web Audio API
@@ -1428,27 +1449,51 @@ function pomoRender(){
 }
 function pomoStartPause(){
   if(pomoState.running){
+    // Pausar: salvar quanto tempo resta agora
+    pomoState.remaining=pomoCalcRemaining();
     pomoState.running=false;
+    pomoState.startedAt=null;
     clearInterval(pomoState.interval);
   }else{
-    pomoInitAudio(); // iOS: inicializar audio durante gesto do usuário
+    pomoInitAudio();
+    // Iniciar: gravar timestamp de início
+    pomoState.startedAt=Date.now();
+    pomoState.remainingAtStart=pomoState.remaining;
+    pomoState.accumulatedAtStart=pomoState.accumulatedSec;
     pomoState.running=true;
-    pomoState.interval=setInterval(pomoTick,1000);
+    pomoState.interval=setInterval(pomoTick,500); // poll mais frequente
   }
   pomoRender();
 }
+function pomoCalcRemaining(){
+  if(!pomoState.startedAt)return pomoState.remaining;
+  const elapsed=Math.floor((Date.now()-pomoState.startedAt)/1000);
+  return Math.max(0,pomoState.remainingAtStart-elapsed);
+}
+function pomoCalcAccumulated(){
+  if(!pomoState.startedAt||pomoState.phase!=='focus')return pomoState.accumulatedSec;
+  const elapsed=Math.floor((Date.now()-pomoState.startedAt)/1000);
+  return pomoState.accumulatedAtStart+elapsed;
+}
 function pomoTick(){
-  if(pomoState.remaining>0){
-    pomoState.remaining--;
-    if(pomoState.phase==='focus')pomoState.accumulatedSec++;
+  if(!pomoState.running)return;
+  const remaining=pomoCalcRemaining();
+  // Atualizar acumulado se em foco
+  if(pomoState.phase==='focus'){
+    pomoState.accumulatedSec=pomoCalcAccumulated();
+  }
+  if(remaining>0){
+    pomoState.remaining=remaining;
     pomoRender();
   }else{
+    pomoState.remaining=0;
     pomoPhaseEnd();
   }
 }
 function pomoPhaseEnd(){
   clearInterval(pomoState.interval);
   pomoState.running=false;
+  pomoState.startedAt=null;
   // sound + vibration FIRST
   try{if(navigator.vibrate)navigator.vibrate([200,100,200]);}catch(e){}
   pomoPlaySound();
@@ -1477,6 +1522,7 @@ function pomoPhaseEnd(){
 function pomoReset(){
   clearInterval(pomoState.interval);
   pomoState.running=false;
+  pomoState.startedAt=null;
   pomoState.phase='focus';
   pomoState.remaining=pomoState.focusMin*60;
   pomoState.cycle=1;
@@ -1781,6 +1827,142 @@ function renderDashMiniDonut(){
 }
 // ── HORAS: filtro de período (Dia/Semana/Mês/Ano/Tudo) ──
 let horasPeriod='dia';
+
+// ── BAR CHART ──────────────────────────────────────────
+function renderBarChart(){
+  const svg=document.getElementById('bar-chart-svg');
+  if(!svg)return;
+  const p=horasPeriod;
+  let bars=[];
+  const today=todayStr();
+
+  if(p==='dia'){
+    // Últimas 24h (hoje): barras por hora — simplificado: mostrar os últimos 7 dias
+    bars=getLast7Days();
+    const titleEl=document.getElementById('bar-chart-title');
+    if(titleEl)titleEl.textContent='Horas por dia — última semana';
+  } else if(p==='semana'){
+    bars=getWeekDays();
+    const titleEl=document.getElementById('bar-chart-title');
+    if(titleEl)titleEl.textContent='Horas por dia — esta semana';
+  } else if(p==='mes'){
+    bars=getMonthWeeks();
+    const titleEl=document.getElementById('bar-chart-title');
+    if(titleEl)titleEl.textContent='Horas por semana — este mês';
+  } else if(p==='ano'){
+    bars=getYearMonths();
+    const titleEl=document.getElementById('bar-chart-title');
+    if(titleEl)titleEl.textContent='Horas por mês — este ano';
+  } else {
+    bars=getLast12Weeks();
+    const titleEl=document.getElementById('bar-chart-title');
+    if(titleEl)titleEl.textContent='Horas por semana';
+  }
+  drawBarChart(svg, bars, 120);
+}
+
+function getLast7Days(){
+  const bars=[];
+  const dias=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  for(let i=6;i>=0;i--){
+    const d=new Date();d.setDate(d.getDate()-i);
+    const ds=d.toISOString().slice(0,10);
+    const h=state.horas.filter(x=>x.data===ds).reduce((a,x)=>a+x.horas,0);
+    bars.push({label:dias[d.getDay()],value:h,isToday:ds===todayStr()});
+  }
+  return bars;
+}
+function getWeekDays(){
+  const bars=[];
+  const dias=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const start=new Date(startOfWeek());
+  for(let i=0;i<7;i++){
+    const d=new Date(start);d.setDate(d.getDate()+i);
+    if(d>new Date())break;
+    const ds=d.toISOString().slice(0,10);
+    const h=state.horas.filter(x=>x.data===ds).reduce((a,x)=>a+x.horas,0);
+    bars.push({label:dias[d.getDay()],value:h,isToday:ds===todayStr()});
+  }
+  return bars;
+}
+function getMonthWeeks(){
+  const today=todayStr();
+  const monthStart=today.slice(0,7)+'-01';
+  const d=new Date(monthStart);
+  const bars=[];
+  let w=1;
+  while(d.toISOString().slice(0,10)<=today){
+    const wStart=d.toISOString().slice(0,10);
+    const wEnd=new Date(d);wEnd.setDate(wEnd.getDate()+6);
+    const ws=wStart,we=wEnd.toISOString().slice(0,10)<today?wEnd.toISOString().slice(0,10):today;
+    const h=state.horas.filter(x=>x.data>=ws&&x.data<=we).reduce((a,x)=>a+x.horas,0);
+    bars.push({label:'Sem '+w,value:h,isToday:false});
+    d.setDate(d.getDate()+7);w++;
+  }
+  return bars;
+}
+function getYearMonths(){
+  const today=todayStr();
+  const year=today.slice(0,4);
+  const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const bars=[];
+  for(let m=0;m<12;m++){
+    const mp=String(m+1).padStart(2,'0');
+    const from=year+'-'+mp+'-01';
+    if(from>today)break;
+    const h=state.horas.filter(x=>x.data.startsWith(year+'-'+mp)).reduce((a,x)=>a+x.horas,0);
+    bars.push({label:meses[m],value:h,isToday:false});
+  }
+  return bars;
+}
+function getLast12Weeks(){
+  const bars=[];
+  for(let i=11;i>=0;i--){
+    const d=new Date();d.setDate(d.getDate()-i*7);
+    const ds=d.toISOString().slice(0,10);
+    const we=new Date(d);we.setDate(we.getDate()+6);
+    const ws=ds,wend=we.toISOString().slice(0,10);
+    const h=state.horas.filter(x=>x.data>=ws&&x.data<=wend).reduce((a,x)=>a+x.horas,0);
+    const label=ds.slice(5).replace('-','/');
+    bars.push({label,value:h,isToday:false});
+  }
+  return bars;
+}
+
+function drawBarChart(svg,bars,svgH){
+  if(!bars.length){svg.innerHTML='';return;}
+  const maxVal=Math.max(...bars.map(b=>b.value),0.1);
+  const padTop=16,padBot=20,padSide=4;
+  const chartH=svgH-padTop-padBot;
+  const n=bars.length;
+  const totalW=svg.getBoundingClientRect().width||svg.parentElement.offsetWidth||300;
+  const barW=Math.max(8,Math.floor((totalW-padSide*2)/n)-4);
+  const gap=Math.floor((totalW-padSide*2-barW*n)/(n+1));
+  const color='var(--blue,#378ADD)';
+  const colorToday='#c9a84c';
+  let html='';
+  bars.forEach((b,i)=>{
+    const x=padSide+gap+i*(barW+gap);
+    const barH=Math.max(2,Math.round((b.value/maxVal)*chartH));
+    const y=padTop+chartH-barH;
+    const fill=b.isToday?colorToday:color;
+    const valStr=b.value>0?formatH(b.value):'';
+    html+=`<g class="${b.isToday?'bar-today':''}">`;
+    html+=`<rect x="${x}" y="${y}" width="${barW}" height="${barH}" rx="3" fill="${fill}" opacity="0.85"/>`;
+    if(b.value>0)html+=`<text x="${x+barW/2}" y="${y-3}" class="bar-val-label">${valStr}</text>`;
+    html+=`<text x="${x+barW/2}" y="${svgH-4}" class="bar-day-label">${b.label}</text>`;
+    html+='</g>';
+  });
+  svg.setAttribute('viewBox','0 0 '+totalW+' '+svgH);
+  svg.innerHTML=html;
+}
+
+function renderMuralBarChart(){
+  const svg=document.getElementById('mural-bar-svg');
+  if(!svg)return;
+  const bars=getLast7Days();
+  drawBarChart(svg,bars,80);
+}
 function setHorasPeriod(p){
   horasPeriod=p;
   document.querySelectorAll('.period-tab').forEach(b=>{
@@ -1803,6 +1985,7 @@ function renderHorasFiltered(){
   const sub=document.getElementById('donut-total-sub');
   if(sub)sub.textContent=range.label;
   drawDonut(byDisc);
+  setTimeout(renderBarChart,50);
 }
 
 function renderHoras(){
@@ -1888,6 +2071,23 @@ function clearHorasTudo(){state.horas=[];save();renderHoras();renderDashboard();
 // ── INIT ──────────────────────────────────────────────
 
 
+
+// Recalcular timer ao voltar para a aba
+document.addEventListener('visibilitychange',function(){
+  if(!document.hidden&&pomoState.running){
+    const remaining=pomoCalcRemaining();
+    if(remaining<=0){
+      pomoState.remaining=0;
+      pomoPhaseEnd();
+    }else{
+      pomoState.remaining=remaining;
+      if(pomoState.phase==='focus'){
+        pomoState.accumulatedSec=pomoCalcAccumulated();
+      }
+      pomoRender();
+    }
+  }
+});
 // ── TEMA ──────────────────────────────────────
 const THEMES=['light','dark','sepia'];
 const THEME_SVGS={
