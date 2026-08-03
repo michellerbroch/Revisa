@@ -227,6 +227,9 @@ button.sm{padding:5px 10px;font-size:12px;}
 .bar-day-label{font-size:9px;fill:var(--text2,#888);text-anchor:middle;}
 .bar-val-label{font-size:9px;fill:var(--text2,#888);text-anchor:middle;}
 .bar-today rect{filter:brightness(1.15);}
+.disc-assuntos{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0 2px;}
+.assunto-chip{font-size:11px;padding:2px 8px;border-radius:10px;background:var(--bg);border:0.5px solid var(--border);color:var(--text2);}
+.assunto-chip.estudado{background:var(--blue-bg,#e6f1fb);color:var(--blue);border-color:var(--blue);}
 </style>
 </head>
 <body>
@@ -482,10 +485,16 @@ button.sm{padding:5px 10px;font-size:12px;}
         <div class="fg" style="width:160px;"><span class="fg-label">Disciplina</span>
           <select id="rev-disc-sel" onchange="onDiscChange()"><option value="">— selecionar —</option></select>
         </div>
-        <div class="fg" style="width:100px;"><span class="fg-label">Do art.</span>
+        <div class="fg" style="min-width:130px;flex:1;" id="rev-assunto-wrap" style="display:none;">
+          <span class="fg-label">Assunto</span>
+          <select id="rev-assunto-sel" onchange="onAssuntoChange()"><option value="">— selecionar —</option></select>
+        </div>
+        <div class="fg" style="width:90px;" id="rev-art-de-wrap">
+          <span class="fg-label">Do art.</span>
           <select id="rev-art-de" onchange="onArtChange()"><option value="">—</option></select>
         </div>
-        <div class="fg" style="width:100px;"><span class="fg-label">Ao art.</span>
+        <div class="fg" style="width:90px;" id="rev-art-ate-wrap">
+          <span class="fg-label">Ao art.</span>
           <select id="rev-art-ate"><option value="">—</option></select>
         </div>
       </div>
@@ -1154,22 +1163,69 @@ function populateDiscSel(){
   onDiscChange();
 }
 function onDiscChange(){
-  const discId=parseInt(document.getElementById('rev-disc-sel').value);
-  const disc=state.disciplinas.find(d=>d.id===discId);
   const deEl=document.getElementById('rev-art-de'),ateEl=document.getElementById('rev-art-ate');
+  const assWrap=document.getElementById('rev-assunto-wrap');
+  const assSel=document.getElementById('rev-assunto-sel');
+  const artDeWrap=document.getElementById('rev-art-de-wrap');
+  const artAteWrap=document.getElementById('rev-art-ate-wrap');
   deEl.innerHTML='<option value="">—</option>';ateEl.innerHTML='<option value="">—</option>';
-  if(!disc)return;
-  for(let i=1;i<=disc.total;i++){deEl.innerHTML+=`<option value="${i}">${i}</option>`;ateEl.innerHTML+=`<option value="${i}">${i}</option>`;}
-  onArtChange();
+  if(assSel)assSel.innerHTML='<option value="">— selecionar —</option>';
+  if(artDeWrap)artDeWrap.style.display='none';
+  if(artAteWrap)artAteWrap.style.display='none';
+  const discId=parseInt(document.getElementById('rev-disc-sel').value);
+  if(!discId){if(assWrap)assWrap.style.display='none';return;}
+  const disc=state.disciplinas.find(d=>d.id===discId);if(!disc)return;
+  const hasAssuntos=disc.assuntos&&disc.assuntos.length>0;
+  if(assWrap)assWrap.style.display=hasAssuntos?'':'none';
+  if(hasAssuntos&&assSel){
+    disc.assuntos.forEach(a=>{
+      assSel.innerHTML+=`<option value="${a.id}">${a.estudado?'✓ ':''} ${a.nome}${a.totalArtigos?' ('+a.totalArtigos+' art.)':''}</option>`;
+    });
+  }
+  // Se não há assuntos, mostra artigos da disciplina diretamente
+  if(!hasAssuntos&&disc.total>0){
+    if(artDeWrap)artDeWrap.style.display='';
+    if(artAteWrap)artAteWrap.style.display='';
+    for(let i=1;i<=disc.total;i++){deEl.innerHTML+=`<option value="${i}">${i}</option>`;ateEl.innerHTML+=`<option value="${i}">${i}</option>`;}
+    onArtChange();
+  }
+}
+function onAssuntoChange(){
+  const deEl=document.getElementById('rev-art-de'),ateEl=document.getElementById('rev-art-ate');
+  const artDeWrap=document.getElementById('rev-art-de-wrap');
+  const artAteWrap=document.getElementById('rev-art-ate-wrap');
+  deEl.innerHTML='<option value="">—</option>';ateEl.innerHTML='<option value="">—</option>';
+  const discId=parseInt(document.getElementById('rev-disc-sel').value);
+  const assId=parseInt((document.getElementById('rev-assunto-sel')||{}).value)||null;
+  if(!discId||!assId){
+    if(artDeWrap)artDeWrap.style.display='none';
+    if(artAteWrap)artAteWrap.style.display='none';
+    return;
+  }
+  const disc=state.disciplinas.find(d=>d.id===discId);if(!disc)return;
+  const ass=(disc.assuntos||[]).find(a=>a.id===assId);if(!ass)return;
+  if(ass.totalArtigos>0){
+    if(artDeWrap)artDeWrap.style.display='';
+    if(artAteWrap)artAteWrap.style.display='';
+    for(let i=1;i<=ass.totalArtigos;i++){deEl.innerHTML+=`<option value="${i}">${i}</option>`;ateEl.innerHTML+=`<option value="${i}">${i}</option>`;}
+    onArtChange();
+  }else{
+    if(artDeWrap)artDeWrap.style.display='none';
+    if(artAteWrap)artAteWrap.style.display='none';
+  }
 }
 function onArtChange(){
   const de=parseInt(document.getElementById('rev-art-de').value)||0;
   const discId=parseInt(document.getElementById('rev-disc-sel').value);
+  const assId=parseInt((document.getElementById('rev-assunto-sel')||{}).value)||null;
   const disc=state.disciplinas.find(d=>d.id===discId);
   const ateEl=document.getElementById('rev-art-ate');
   if(!disc||!de)return;
+  // Use assunto total if assunto with articles selected, else disc total
+  const ass=assId?(disc.assuntos||[]).find(a=>a.id===assId):null;
+  const maxArt=(ass&&ass.totalArtigos>0)?ass.totalArtigos:disc.total;
   ateEl.innerHTML='<option value="">—</option>';
-  for(let i=de;i<=disc.total;i++)ateEl.innerHTML+=`<option value="${i}">${i}</option>`;
+  for(let i=de;i<=maxArt;i++)ateEl.innerHTML+=`<option value="${i}">${i}</option>`;
 }
 function getArtigosRange(de,ate){const a=[];for(let i=de;i<=ate;i++)a.push(i);return a;}
 
@@ -1305,6 +1361,7 @@ function chipShort(r,max){max=max||26;const f=buildChipLabel(r);return f.length>
 function addRevisao(){
   const tema=document.getElementById('rev-tema').value.trim();
   const discId=parseInt(document.getElementById('rev-disc-sel').value)||null;
+  const assuntoId=parseInt((document.getElementById('rev-assunto-sel')||{}).value)||null;
   const artDe=parseInt(document.getElementById('rev-art-de').value)||null;
   const artAte=parseInt(document.getElementById('rev-art-ate').value)||null;
   const horasVal=parseInt(document.getElementById('rev-horas').value)||0;
@@ -1320,11 +1377,19 @@ function addRevisao(){
   const id=Date.now();
   const artigos=artDe?getArtigosRange(artDe,artAteReal):[];
   if(disc&&artigos.length)artigos.forEach(a=>{if(!disc.artigos.includes(a))disc.artigos.push(a);});
-  state.revisoes.unshift({id,tema,disc:discNome,discNome,discId,artDe,artAte:artAteReal,artigos,data,revDates:addRevDates(data),done:[false,false,false]});
-  if(!isNaN(horas)&&horas>0)state.horas.unshift({id:id+1,data,disc:discNome||(tema||'Estudo'),horas,nota:buildChipLabel({tema,discNome,artDe,artAte:artAteReal}),fromRevisao:true});
+  // Marcar assunto como estudado
+  if(disc&&assuntoId){
+    const ass=disc.assuntos.find(a=>a.id===assuntoId);
+    if(ass)ass.estudado=true;
+  }
+  const assuntoNome=disc&&assuntoId?(disc.assuntos.find(a=>a.id===assuntoId)||{}).nome:'';
+  state.revisoes.unshift({id,tema,disc:discNome,discNome,discId,artDe,artAte:artAteReal,artigos,assuntoId,assuntoNome,data,revDates:addRevDates(data),done:[false,false,false]});
+  if(!isNaN(horas)&&horas>0)state.horas.unshift({id:id+1,data,disc:discNome||(tema||'Estudo'),horas,nota:buildChipLabel({tema,discNome,artDe,artAte:artAteReal,assuntoNome}),fromRevisao:true});
   save();renderTimeline();renderProgresso();renderDashboard();
   document.getElementById('rev-tema').value='';document.getElementById('rev-disc-sel').value='';
   document.getElementById('rev-art-de').innerHTML='<option value="">—</option>';document.getElementById('rev-art-ate').innerHTML='<option value="">—</option>';
+  const assSel=document.getElementById('rev-assunto-sel');if(assSel)assSel.innerHTML='<option value="">— selecionar —</option>';
+  const assWrap=document.getElementById('rev-assunto-wrap');if(assWrap)assWrap.style.display='none';
   document.getElementById('rev-horas').value='';
   document.getElementById('rev-min').value='';
 }
@@ -1684,9 +1749,17 @@ function renderProgresso(){
   const list=document.getElementById('disc-list');
   if(!state.disciplinas.length){list.innerHTML='<div class="empty-state">Nenhuma disciplina cadastrada.</div>';return;}
   list.innerHTML=state.disciplinas.map((d,idx)=>{
-    const pct=d.total>0?Math.min(100,Math.round(d.artigos.length/d.total*100)):0;
+    const _as=d.assuntos||[]; const _tu=(d.total||0)+_as.length; const _do=d.artigos.length+_as.filter(a=>a.estudado).length; const pct=_tu>0?Math.min(100,Math.round(_do/_tu*100)):0;
     const cor=getDiscColor(d,idx);
-    return `<div class="disc-item"><div class="disc-item-header"><span class="disc-name" style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${cor};flex-shrink:0;"></span>${d.nome}</span><div style="display:flex;align-items:center;gap:8px;"><span class="disc-pct" style="color:${cor};">${pct}%</span><button class="sm" onclick="openDiscModal(${d.id})">Editar</button></div></div><div class="prog-bar-track"><div class="prog-bar-fill" style="width:${pct}%;background:${cor};"></div></div><div class="disc-meta">${d.artigos.length} de ${d.total} artigos estudados</div></div>`;
+    const assuntos=d.assuntos||[];
+    const totalUnits=(d.total||0)+assuntos.length;
+    const doneUnits=d.artigos.length+assuntos.filter(a=>a.estudado).length;
+    const pctCalc=totalUnits>0?Math.min(100,Math.round(doneUnits/totalUnits*100)):0;
+    const assHtml=assuntos.length?'<div class="disc-assuntos">'+assuntos.map(a=>'<span class="assunto-chip'+(a.estudado?' estudado':'')+'">'+a.nome+'</span>').join('')+'</div>':'';
+    const metaStr=d.total>0?`${d.artigos.length} de ${d.total} artigos`:'';
+    const assMetaStr=assuntos.length?`${assuntos.filter(a=>a.estudado).length} de ${assuntos.length} assuntos`:'';
+    const metaFull=[metaStr,assMetaStr].filter(Boolean).join(' · ')+' estudados';
+    return `<div class="disc-item"><div class="disc-item-header"><span class="disc-name" style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${cor};flex-shrink:0;"></span>${d.nome}</span><div style="display:flex;align-items:center;gap:8px;"><span class="disc-pct" style="color:${cor};">${pctCalc}%</span><button class="sm" onclick="openDiscModal(${d.id})">Editar</button></div></div><div class="prog-bar-track"><div class="prog-bar-fill" style="width:${pctCalc}%;background:${cor};"></div></div>${assHtml}<div class="disc-meta">${metaFull}</div></div>`;
   }).join('');
 }
 
@@ -2034,12 +2107,67 @@ function confirmCancel(){
   confirmCtx=null;cancelCtx=null;
 }
 function confirmOk(){document.getElementById('confirm-overlay').classList.remove('open');if(confirmCtx)confirmCtx();confirmCtx=null;cancelCtx=null;}
+function discAddAssunto(discId){
+  const disc=state.disciplinas.find(d=>d.id===discId);if(!disc)return;
+  const inp=document.getElementById('disc-novo-assunto');
+  const nome=(inp?inp.value:'').trim();if(!nome)return;
+  if(!disc.assuntos)disc.assuntos=[];
+  const artsEl=document.getElementById('disc-novo-assunto-arts');
+  const totalArtigos=parseInt(artsEl?artsEl.value:0)||0;
+  disc.assuntos.push({id:Date.now(),nome,totalArtigos,estudado:false});
+  save();renderProgresso();
+  // refresh modal content
+  const listEl=document.getElementById('disc-assunto-list');
+  if(listEl){
+    const _asArr=disc.assuntos;
+    listEl.innerHTML=_asArr.map((a,i)=>'<div style="display:flex;align-items:center;gap:6px;padding:4px 0;">'
+      +'<span style="flex:1;font-size:12px;">'+(a.estudado?'✓ ':'')+a.nome+'</span>'
+      +'<button onclick="discToggleAssunto('+discId+','+a.id+')" style="font-size:10px;padding:2px 6px;">'+(a.estudado?'Desmarcar':'Marcar')+'</button>'
+      +'<button onclick="discDeleteAssunto('+discId+','+a.id+')" style="font-size:10px;padding:2px 6px;background:#FCEBEB;color:#A32D2D;border-color:#E8B4B4;">✕</button>'
+      +'</div>').join('');
+  }
+  inp.value='';if(artsEl)artsEl.value='';
+}
+function discToggleAssunto(discId,assId){
+  const disc=state.disciplinas.find(d=>d.id===discId);if(!disc)return;
+  const ass=(disc.assuntos||[]).find(a=>a.id===assId);if(!ass)return;
+  ass.estudado=!ass.estudado;
+  save();renderProgresso();
+  const listEl=document.getElementById('disc-assunto-list');
+  if(listEl){
+    const _asArr=disc.assuntos;
+    listEl.innerHTML=_asArr.map(a=>'<div style="display:flex;align-items:center;gap:6px;padding:4px 0;">'
+      +'<span style="flex:1;font-size:12px;">'+(a.estudado?'✓ ':'')+a.nome+'</span>'
+      +'<button onclick="discToggleAssunto('+discId+','+a.id+')" style="font-size:10px;padding:2px 6px;">'+(a.estudado?'Desmarcar':'Marcar')+'</button>'
+      +'<button onclick="discDeleteAssunto('+discId+','+a.id+')" style="font-size:10px;padding:2px 6px;background:#FCEBEB;color:#A32D2D;border-color:#E8B4B4;">✕</button>'
+      +'</div>').join('');
+  }
+}
+function discDeleteAssunto(discId,assId){
+  const disc=state.disciplinas.find(d=>d.id===discId);if(!disc)return;
+  disc.assuntos=(disc.assuntos||[]).filter(a=>a.id!==assId);
+  save();renderProgresso();
+  const listEl=document.getElementById('disc-assunto-list');
+  if(listEl){
+    listEl.innerHTML=disc.assuntos.map(a=>'<div style="display:flex;align-items:center;gap:6px;padding:4px 0;">'
+      +'<span style="flex:1;font-size:12px;">'+(a.estudado?'✓ ':'')+a.nome+'</span>'
+      +'<button onclick="discToggleAssunto('+discId+','+a.id+')" style="font-size:10px;padding:2px 6px;">'+(a.estudado?'Desmarcar':'Marcar')+'</button>'
+      +'<button onclick="discDeleteAssunto('+discId+','+a.id+')" style="font-size:10px;padding:2px 6px;background:#FCEBEB;color:#A32D2D;border-color:#E8B4B4;">✕</button>'
+      +'</div>').join('') || '<span style="font-size:12px;color:var(--text2);">Nenhum assunto cadastrado.</span>';
+  }
+}
 function openDiscModal(id){
   const disc=state.disciplinas.find(d=>d.id===id);if(!disc)return;
   const idx=state.disciplinas.findIndex(d=>d.id===id);
   const cor=getDiscColor(disc,idx);
   const pct=disc.total>0?Math.min(100,Math.round(disc.artigos.length/disc.total*100)):0;
-  showConfirm(disc.nome,`${disc.artigos.length} de ${disc.total} artigos estudados (${pct}%). O que deseja fazer?`,null,null,null,
+  const _asArr=disc.assuntos||[];
+  const _asHtml=_asArr.map((a,i)=>'<div style="display:flex;align-items:center;gap:6px;padding:4px 0;">'
+    +'<span style="flex:1;font-size:12px;">'+(a.estudado?'✓ ':'')+a.nome+'</span>'
+    +'<button onclick="discToggleAssunto('+disc.id+','+a.id+')" style="font-size:10px;padding:2px 6px;">'+(a.estudado?'Desmarcar':'Marcar')+'</button>'
+    +'<button onclick="discDeleteAssunto('+disc.id+','+a.id+')" style="font-size:10px;padding:2px 6px;background:#FCEBEB;color:#A32D2D;border-color:#E8B4B4;">✕</button>'
+    +'</div>').join('');
+  showConfirm(disc.nome,`${pct}% concluído`,null,null,null,
     `<div style="display:flex;gap:8px;flex-direction:column;">
       <label style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg2);border-radius:var(--radius-sm);font-size:12px;cursor:pointer;">
         <span>Cor da disciplina</span>
