@@ -843,6 +843,8 @@ const DEF_STATE={revisoes:[],horas:[],muralImages:[],muralSelected:null,discipli
 let state=JSON.parse(JSON.stringify(DEF_STATE));
 try{const s=JSON.parse(localStorage.getItem('estudoAppV9')||'null');if(s){Object.assign(state,s);['revisoes','horas','muralImages','disciplinas','frases','lembretes'].forEach(k=>{if(!Array.isArray(state[k]))state[k]=[];});state.disciplinas.forEach(d=>{if(!Array.isArray(d.assuntos))d.assuntos=[];});}}catch(e){}
 function save(){
+  state.disciplinas.forEach(d=>{if(!Array.isArray(d.assuntos))d.assuntos=[];});
+  if(!state.fc||typeof state.fc!=='object')state.fc={disciplinas:[]};
   try{localStorage.setItem('estudoAppV9',JSON.stringify(state));}catch(e){}
   saveToDBDebounced();
 }
@@ -1373,7 +1375,7 @@ function addRevisao(){
   const disc=discId?state.disciplinas.find(d=>d.id===discId):null;
   const discNome=disc?disc.nome:'';
   if(!tema&&!discNome){alert('Preencha o conteúdo estudado ou selecione uma disciplina.');return;}
-  if(discNome&&!tema&&!artDe){alert('Com disciplina selecionada, preencha o conteúdo livre ou selecione ao menos o artigo inicial.');return;}
+  if(discNome&&!tema&&!artDe&&!assuntoId){alert('Com disciplina selecionada, preencha o conteúdo livre, selecione um assunto ou informe o artigo inicial.');return;}
   const artAteReal=artAte||artDe;
   if(artDe&&artAteReal&&artDe>artAteReal){alert('O artigo inicial não pode ser maior que o final.');return;}
   const id=Date.now();
@@ -1765,9 +1767,12 @@ function renderProgresso(){
     const doneUnits=(_hasAss?assuntos.filter(a=>a.estudado).length:0)+(_hasArt?d.artigos.length:0);
     const pctCalc=totalUnits>0?Math.min(100,Math.round(doneUnits/totalUnits*100)):0;
     const assHtml=assuntos.length?'<div class="disc-assuntos">'+assuntos.map(a=>'<span class="assunto-chip'+(a.estudado?' estudado':'')+'">'+a.nome+'</span>').join('')+'</div>':'';
-    const metaStr=d.total>0?`${d.artigos.length} de ${d.total} artigos`:'';
-    const assMetaStr=assuntos.length?`${assuntos.filter(a=>a.estudado).length} de ${assuntos.length} assuntos`:'';
-    const metaFull=[metaStr,assMetaStr].filter(Boolean).join(' · ')+' estudados';
+    // Só mostra artigos da disciplina se não houver assuntos OU se houver artigos estudados
+    const metaStr=(d.total>0&&(assuntos.length===0||d.artigos.length>0))?(d.artigos.length+' de '+d.total+' artigos'):'';
+    const assStudied=assuntos.filter(a=>a.estudado).length;
+    const assMetaStr=assuntos.length?(assStudied+' de '+assuntos.length+' assuntos'):'';
+    const metaParts=[metaStr,assMetaStr].filter(Boolean);
+    const metaFull=metaParts.length?metaParts.join(' · ')+' estudados':'';
     return `<div class="disc-item"><div class="disc-item-header"><span class="disc-name" style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${cor};flex-shrink:0;"></span>${d.nome}</span><div style="display:flex;align-items:center;gap:8px;"><span class="disc-pct" style="color:${cor};">${pctCalc}%</span><button class="sm" onclick="openDiscModal(${d.id})">Editar</button></div></div><div class="prog-bar-track"><div class="prog-bar-fill" style="width:${pctCalc}%;background:${cor};"></div></div>${assHtml}<div class="disc-meta">${metaFull}</div></div>`;
   }).join('');
 }
@@ -2179,7 +2184,8 @@ function openDiscModal(id){
     +'<button onclick="discToggleAssunto('+disc.id+','+a.id+')" style="font-size:10px;padding:2px 6px;">'+(a.estudado?'Desmarcar':'Marcar')+'</button>'
     +'<button onclick="discDeleteAssunto('+disc.id+','+a.id+')" style="font-size:10px;padding:2px 6px;background:#FCEBEB;color:#A32D2D;border-color:#E8B4B4;">✕</button>'
     +'</div>').join('');
-  showConfirm(disc.nome,`${pct}% concluído`,null,null,null,
+  const _discArtInfo=disc.total>0?` · ${disc.artigos.length}/${disc.total} art. (disciplina)`:'';
+  showConfirm(disc.nome,`${pct}% concluído${_discArtInfo}`,null,null,null,
     `<div style="display:flex;gap:10px;flex-direction:column;">
       <label style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg2);border-radius:var(--radius-sm);font-size:12px;cursor:pointer;">
         <span>Cor da disciplina</span>
