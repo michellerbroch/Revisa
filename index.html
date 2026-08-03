@@ -583,7 +583,7 @@ button.sm{padding:5px 10px;font-size:12px;}
     <div class="collapsible-body" id="disc-body">
       <div class="form-row">
         <div class="fg grow"><span class="fg-label">Nome da disciplina</span><input type="text" id="disc-nome"/></div>
-        <div class="fg" style="width:130px;"><span class="fg-label">Total de artigos</span><input type="number" id="disc-total" min="1" step="1"/></div>
+        <div class="fg" style="width:130px;"><span class="fg-label">Total de artigos <span style="font-size:10px;color:var(--text2);">(opcional)</span></span><input type="number" id="disc-total" min="0" step="1" placeholder="0"/></div>
         <div class="fg" style="align-items:flex-end;flex-shrink:0;">
           <button class="primary" onclick="addDisc()">Cadastrar</button>
         </div>
@@ -1152,9 +1152,8 @@ function renderDashboard(){
 // ── DISCIPLINAS ────────────────────────────────────────
 function addDisc(){
   const nome=document.getElementById('disc-nome').value.trim();
-  const total=parseInt(document.getElementById('disc-total').value);
+  const total=parseInt(document.getElementById('disc-total').value)||0;
   if(!nome)return;
-  if(isNaN(total)||total<1){alert('Informe o total de artigos.');return;}
   if(state.disciplinas.find(d=>d.nome.toLowerCase()===nome.toLowerCase())){alert('Disciplina já cadastrada.');return;}
   state.disciplinas.push({id:Date.now(),nome,total,artigos:[]});
   save();renderProgresso();populateDiscSel();
@@ -1213,7 +1212,12 @@ function onAssuntoChange(){
   if(ass.totalArtigos>0){
     if(artDeWrap)artDeWrap.style.display='';
     if(artAteWrap)artAteWrap.style.display='';
-    for(let i=1;i<=ass.totalArtigos;i++){deEl.innerHTML+=`<option value="${i}">${i}</option>`;ateEl.innerHTML+=`<option value="${i}">${i}</option>`;}
+    const doneArt=Array.isArray(ass.artigos)?ass.artigos:[];
+    for(let i=1;i<=ass.totalArtigos;i++){
+      const done=doneArt.includes(i);
+      const opt=`<option value="${i}" ${done?'style="color:#888;"':''} title="${done?'Já estudado':''}">${'done'?'':''}${i}${done?' ✓':''}</option>`;
+      deEl.innerHTML+=opt;ateEl.innerHTML+=opt;
+    }
     onArtChange();
   }else{
     if(artDeWrap)artDeWrap.style.display='none';
@@ -1230,8 +1234,12 @@ function onArtChange(){
   // Use assunto total if assunto with articles selected, else disc total
   const ass=assId?(disc.assuntos||[]).find(a=>a.id===assId):null;
   const maxArt=(ass&&ass.totalArtigos>0)?ass.totalArtigos:disc.total;
+  const doneList=ass&&Array.isArray(ass.artigos)?ass.artigos:disc.artigos||[];
   ateEl.innerHTML='<option value="">—</option>';
-  for(let i=de;i<=maxArt;i++)ateEl.innerHTML+=`<option value="${i}">${i}</option>`;
+  for(let i=de;i<=maxArt;i++){
+    const done=doneList.includes(i);
+    ateEl.innerHTML+=`<option value="${i}" ${done?'style="color:#888;"':''}>` +i+(done?' ✓':'')+'</option>';
+  }
 }
 function getArtigosRange(de,ate){const a=[];for(let i=de;i<=ate;i++)a.push(i);return a;}
 
