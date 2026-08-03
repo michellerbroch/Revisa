@@ -763,7 +763,9 @@ async function loadStateFromDB() {
       if (!Array.isArray(state[k])) state[k] = [];
     });
     // migração: garantir campo assuntos em cada disciplina
-    state.disciplinas.forEach(d => { if (!Array.isArray(d.assuntos)) d.assuntos = []; });
+    state.disciplinas.forEach(d => { if (!Array.isArray(d.assuntos)) d.assuntos = [];
+      d.assuntos.forEach(a=>{if(!Array.isArray(a.artigos))a.artigos=[];});
+    });
     try { localStorage.setItem('estudoAppV9', JSON.stringify(state)); } catch(e) {}
   } else {
     // Nenhum dado no Supabase — só cria registro se state tiver dados reais
@@ -1381,11 +1383,23 @@ function addRevisao(){
   const id=Date.now();
   const artigos=artDe?getArtigosRange(artDe,artAteReal):[];
   // Só adiciona artigos ao progresso da disciplina se NÃO houver assunto selecionado
+  // Artigos sem assunto → disc.artigos (comportamento original)
   if(disc&&artigos.length&&!assuntoId)artigos.forEach(a=>{if(!disc.artigos.includes(a))disc.artigos.push(a);});
-  // Marcar assunto como estudado (Option A: binário)
+  // Assunto selecionado:
   if(disc&&assuntoId){
     const ass=disc.assuntos.find(a=>a.id===assuntoId);
-    if(ass)ass.estudado=true;
+    if(ass){
+      if(!Array.isArray(ass.artigos))ass.artigos=[];
+      if(ass.totalArtigos>0&&artigos.length){
+        // Assunto COM artigos → rastreia artigos do assunto (não binário)
+        artigos.forEach(a=>{if(!ass.artigos.includes(a))ass.artigos.push(a);});
+        // Marca como estudado só se completou todos os artigos
+        if(ass.artigos.length>=ass.totalArtigos)ass.estudado=true;
+      }else{
+        // Assunto SEM artigos → binário, marca imediatamente
+        ass.estudado=true;
+      }
+    }
   }
   const assuntoNome=disc&&assuntoId?(disc.assuntos.find(a=>a.id===assuntoId)||{}).nome:'';
   state.revisoes.unshift({id,tema,disc:discNome,discNome,discId,artDe,artAte:artAteReal,artigos,assuntoId,assuntoNome,data,revDates:addRevDates(data),done:[false,false,false]});
@@ -1750,6 +1764,26 @@ function getColorForDiscName(name){
   const idx=state.disciplinas.findIndex(x=>x.nome===name);
   return DISC_COLORS[(idx>=0?idx:0)%DISC_COLORS.length];
 }
+
+// ── PROGRESSO DE ASSUNTOS ──────────────────────────────
+function calcAssuntoProgress(ass){
+  if(ass.estudado)return 1; // marcado manualmente ou completou artigos
+  if(ass.totalArtigos>0&&Array.isArray(ass.artigos)&&ass.artigos.length>0){
+    return Math.min(1,ass.artigos.length/ass.totalArtigos);
+  }
+  return 0;
+}
+function calcDiscPct(d){
+  const assuntos=d.assuntos||[];
+  if(assuntos.length>0){
+    // Disciplina com assuntos: usa SOMENTE assuntos
+    const total=assuntos.length;
+    const done=assuntos.reduce((s,a)=>s+calcAssuntoProgress(a),0);
+    return total>0?Math.min(100,Math.round(done/total*100)):0;
+  }
+  // Disciplina sem assuntos: usa artigos
+  return d.total>0?Math.min(100,Math.round(d.artigos.length/d.total*100)):0;
+}
 function renderProgresso(){
   const list=document.getElementById('disc-list');
   if(!state.disciplinas.length){list.innerHTML='<div class="empty-state">Nenhuma disciplina cadastrada.</div>';return;}
@@ -1761,14 +1795,10 @@ function renderProgresso(){
   const pct=_tu>0?Math.min(100,Math.round(_do/_tu*100)):0;
     const cor=getDiscColor(d,idx);
     const assuntos=d.assuntos||[];
-    const _hasAss=assuntos.length>0;
-    const _hasArt=(d.total||0)>0;
-    const totalUnits=(_hasAss?assuntos.length:0)+(_hasArt?d.total:0);
-    const doneUnits=(_hasAss?assuntos.filter(a=>a.estudado).length:0)+(_hasArt?d.artigos.length:0);
-    const pctCalc=totalUnits>0?Math.min(100,Math.round(doneUnits/totalUnits*100)):0;
+    const pctCalc=calcDiscPct(d);
     const assHtml=assuntos.length?'<div class="disc-assuntos">'+assuntos.map(a=>'<span class="assunto-chip'+(a.estudado?' estudado':'')+'">'+a.nome+'</span>').join('')+'</div>':'';
-    // Só mostra artigos da disciplina se não houver assuntos OU se houver artigos estudados
-    const metaStr=(d.total>0&&(assuntos.length===0||d.artigos.length>0))?(d.artigos.length+' de '+d.total+' artigos'):'';
+    // Artigos da disciplina: só mostra se não há assuntos
+    const metaStr=(d.total>0&&assuntos.length===0)?(d.artigos.length+' de '+d.total+' artigos'):'';
     const assStudied=assuntos.filter(a=>a.estudado).length;
     const assMetaStr=assuntos.length?(assStudied+' de '+assuntos.length+' assuntos'):'';
     const metaParts=[metaStr,assMetaStr].filter(Boolean);
@@ -2175,10 +2205,7 @@ function openDiscModal(id){
   const idx=state.disciplinas.findIndex(d=>d.id===id);
   const cor=getDiscColor(disc,idx);
   const _asArr=disc.assuntos||[];
-  const _hA=_asArr.length>0,_hT=(disc.total||0)>0;
-  const _tu=(_hA?_asArr.length:0)+(_hT?disc.total:0);
-  const _do=(_hA?_asArr.filter(a=>a.estudado).length:0)+(_hT?disc.artigos.length:0);
-  const pct=_tu>0?Math.min(100,Math.round(_do/_tu*100)):0;
+  const pct=calcDiscPct(disc);
   const _asHtml=_asArr.map((a,i)=>'<div style="display:flex;align-items:center;gap:6px;padding:4px 0;">'
     +'<span style="flex:1;font-size:12px;">'+(a.estudado?'✓ ':'')+a.nome+'</span>'
     +'<button onclick="discToggleAssunto('+disc.id+','+a.id+')" style="font-size:10px;padding:2px 6px;">'+(a.estudado?'Desmarcar':'Marcar')+'</button>'
