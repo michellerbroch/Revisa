@@ -1387,11 +1387,18 @@ function addRevDates(base){
   return [1,7,30].map(n=>{const nd=new Date(d);nd.setDate(nd.getDate()+n);return nd.toISOString().split('T')[0];});
 }
 function buildChipLabel(r){
-  const disc=r.discNome||r.disc||'',tema=r.tema||'';
+  const disc=r.discNome||r.disc||'';
+  const ass=r.assuntoNome||'';
+  const tema=r.tema||'';
   let artStr='';
   if(r.artDe){const ate=r.artAte||r.artDe;artStr=r.artDe===ate?`art. ${r.artDe}`:`art. ${r.artDe} ao ${ate}`;}
-  let content=artStr&&tema?`${artStr} · ${tema}`:artStr||tema;
-  return disc?`${disc}: ${content}`:content;
+  // build: disc > assunto > artigos > tema
+  let parts=[];
+  if(disc)parts.push(disc);
+  if(ass)parts.push(ass);
+  if(artStr)parts.push(artStr);
+  if(tema&&!ass&&!artStr)parts.push(tema); // só mostra tema se não tiver assunto/art
+  return parts.join(': ')||tema||'Sem descrição';
 }
 function chipShort(r,max){max=max||26;const f=buildChipLabel(r);return f.length>max?f.slice(0,max-1)+'…':f;}
 
