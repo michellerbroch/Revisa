@@ -762,6 +762,8 @@ async function loadStateFromDB() {
     ['revisoes','horas','muralImages','disciplinas','frases','lembretes'].forEach(k => {
       if (!Array.isArray(state[k])) state[k] = [];
     });
+    // migração: garantir campo assuntos em cada disciplina
+    state.disciplinas.forEach(d => { if (!Array.isArray(d.assuntos)) d.assuntos = []; });
     try { localStorage.setItem('estudoAppV9', JSON.stringify(state)); } catch(e) {}
   } else {
     // Nenhum dado no Supabase — só cria registro se state tiver dados reais
@@ -839,7 +841,7 @@ const MONTHS_SHORT=['jan','fev','mar','abr','mai','jun','jul','ago','set','out',
 const DEF_STATE={revisoes:[],horas:[],muralImages:[],muralSelected:null,disciplinas:[],
   frases:[],provaData:null,provaNome:'',lembretes:[]};
 let state=JSON.parse(JSON.stringify(DEF_STATE));
-try{const s=JSON.parse(localStorage.getItem('estudoAppV9')||'null');if(s){Object.assign(state,s);['revisoes','horas','muralImages','disciplinas','frases','lembretes'].forEach(k=>{if(!Array.isArray(state[k]))state[k]=[];});}}catch(e){}
+try{const s=JSON.parse(localStorage.getItem('estudoAppV9')||'null');if(s){Object.assign(state,s);['revisoes','horas','muralImages','disciplinas','frases','lembretes'].forEach(k=>{if(!Array.isArray(state[k]))state[k]=[];});state.disciplinas.forEach(d=>{if(!Array.isArray(d.assuntos))d.assuntos=[];});}}catch(e){}
 function save(){
   try{localStorage.setItem('estudoAppV9',JSON.stringify(state));}catch(e){}
   saveToDBDebounced();
@@ -2167,19 +2169,31 @@ function openDiscModal(id){
   const disc=state.disciplinas.find(d=>d.id===id);if(!disc)return;
   const idx=state.disciplinas.findIndex(d=>d.id===id);
   const cor=getDiscColor(disc,idx);
-  const pct=disc.total>0?Math.min(100,Math.round(disc.artigos.length/disc.total*100)):0;
   const _asArr=disc.assuntos||[];
+  const _hA=_asArr.length>0,_hT=(disc.total||0)>0;
+  const _tu=(_hA?_asArr.length:0)+(_hT?disc.total:0);
+  const _do=(_hA?_asArr.filter(a=>a.estudado).length:0)+(_hT?disc.artigos.length:0);
+  const pct=_tu>0?Math.min(100,Math.round(_do/_tu*100)):0;
   const _asHtml=_asArr.map((a,i)=>'<div style="display:flex;align-items:center;gap:6px;padding:4px 0;">'
     +'<span style="flex:1;font-size:12px;">'+(a.estudado?'✓ ':'')+a.nome+'</span>'
     +'<button onclick="discToggleAssunto('+disc.id+','+a.id+')" style="font-size:10px;padding:2px 6px;">'+(a.estudado?'Desmarcar':'Marcar')+'</button>'
     +'<button onclick="discDeleteAssunto('+disc.id+','+a.id+')" style="font-size:10px;padding:2px 6px;background:#FCEBEB;color:#A32D2D;border-color:#E8B4B4;">✕</button>'
     +'</div>').join('');
   showConfirm(disc.nome,`${pct}% concluído`,null,null,null,
-    `<div style="display:flex;gap:8px;flex-direction:column;">
+    `<div style="display:flex;gap:10px;flex-direction:column;">
       <label style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg2);border-radius:var(--radius-sm);font-size:12px;cursor:pointer;">
         <span>Cor da disciplina</span>
         <input type="color" id="disc-cor-edit" value="${cor}" style="width:36px;height:28px;padding:2px;border-radius:4px;cursor:pointer;" onchange="updateDiscColor(${id},this.value)"/>
       </label>
+      <div>
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);margin-bottom:6px;">Assuntos / tópicos</div>
+        <div id="disc-assunto-list">${_asHtml||'<span style="font-size:12px;color:var(--text2);">Nenhum assunto cadastrado.</span>'}</div>
+        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+          <input type="text" id="disc-novo-assunto" placeholder="Nome do assunto..." style="flex:2;min-width:120px;font-size:13px;"/>
+          <input type="number" id="disc-novo-assunto-arts" placeholder="Nº artigos (opcional)" min="0" style="flex:1;min-width:80px;font-size:13px;"/>
+          <button onclick="discAddAssunto(${id})" style="font-size:12px;padding:6px 10px;">+ Adicionar</button>
+        </div>
+      </div>
       <button onclick="document.getElementById('confirm-overlay').classList.remove('open')" style="width:100%;justify-content:center;background:var(--blue);color:#fff;border-color:var(--blue);">Salvar e fechar</button>
       <button onclick="doResetDisc(${id})" style="background:#FFF8E6;color:#854F0B;border-color:#FAC775;width:100%;justify-content:center;">Zerar progresso (manter disciplina)</button>
       <button onclick="doDeleteDisc(${id})" style="background:#FCEBEB;color:#A32D2D;border-color:#E8B4B4;width:100%;justify-content:center;">Excluir disciplina</button>
