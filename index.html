@@ -1254,19 +1254,25 @@ function openModal(type,id){
     document.getElementById('modal-title').textContent='Editar conteúdo estudado';
     const discOpts=state.disciplinas.map(d=>`<option value="${d.id}" ${d.id===r.discId?'selected':''}>${d.nome}</option>`).join('');
     const curDisc=r.discId?state.disciplinas.find(d=>d.id===r.discId):null;
+    const curAss=curDisc&&r.assuntoId?(curDisc.assuntos||[]).find(a=>a.id===r.assuntoId):null;
+    const assOpts=curDisc?(curDisc.assuntos||[]).map(a=>`<option value="${a.id}" ${a.id===r.assuntoId?'selected':''}>${a.nome}${a.totalArtigos?' ('+a.totalArtigos+' art.)':''}</option>`).join(''):'';
+    const hasAssuntos=curDisc&&(curDisc.assuntos||[]).length>0;
+    // art range: from assunto if selected, else from disc
+    const maxArt=curAss&&curAss.totalArtigos>0?curAss.totalArtigos:(curDisc?curDisc.total:0);
+    const doneList=curAss&&Array.isArray(curAss.artigos)?curAss.artigos:(curDisc?curDisc.artigos||[]:[]); 
     let artDeOpts='<option value="">—</option>';
     let artAteOpts='<option value="">—</option>';
-    if(curDisc){
-      for(let i=1;i<=curDisc.total;i++)artDeOpts+=`<option value="${i}" ${i===r.artDe?'selected':''}>${i}</option>`;
+    if(maxArt>0){
+      for(let i=1;i<=maxArt;i++){const done=doneList.includes(i);artDeOpts+=`<option value="${i}" ${i===r.artDe?'selected':''} ${done?'style="color:#888;"':''}>${i}${done?' ✓':''}</option>`;}
       const startAte=r.artDe||1;
-      for(let i=startAte;i<=curDisc.total;i++)artAteOpts+=`<option value="${i}" ${i===r.artAte?'selected':''}>${i}</option>`;
+      for(let i=startAte;i<=maxArt;i++){const done=doneList.includes(i);artAteOpts+=`<option value="${i}" ${i===r.artAte?'selected':''} ${done?'style="color:#888;"':''}>${i}${done?' ✓':''}</option>`;}
     }
-    // current hours for this revision (from horas entries)
     const hEntry=state.horas.find(h=>h.id===r.id+1)||state.horas.find(h=>String(h.id).startsWith(String(r.id)));
     const curHoras=hEntry?hEntry.horas:'';
     f.innerHTML=`
       <div class="modal-field"><span class="fg-label">Conteúdo estudado</span><input type="text" id="m-tema" value="${esc(r.tema||'')}"/></div>
       <div class="modal-field"><span class="fg-label">Disciplina</span><select id="m-disc-sel" onchange="modalEditDiscChange()"><option value="">— selecionar —</option>${discOpts}</select></div>
+      ${hasAssuntos?`<div class="modal-field"><span class="fg-label">Assunto</span><select id="m-assunto-sel" onchange="modalEditAssuntoChange()"><option value="">— selecionar —</option>${assOpts}</select></div>`:''}
       <div class="modal-field" style="display:flex;gap:8px;">
         <div style="flex:1;"><span class="fg-label">Do art.</span><select id="m-art-de" onchange="modalEditArtChange()">${artDeOpts}</select></div>
         <div style="flex:1;"><span class="fg-label">Ao art.</span><select id="m-art-ate">${artAteOpts}</select></div>
@@ -1287,6 +1293,18 @@ function openModal(type,id){
 function closeModal(e){
   if(e&&e.target!==document.getElementById('modal-overlay'))return;
   document.getElementById('modal-overlay').classList.remove('open');modalCtx=null;
+}
+function modalEditAssuntoChange(){
+  const discId=parseInt((document.getElementById('m-disc-sel')||{}).value)||null;
+  const assId=parseInt((document.getElementById('m-assunto-sel')||{}).value)||null;
+  const disc=discId?state.disciplinas.find(d=>d.id===discId):null;
+  const ass=disc&&assId?(disc.assuntos||[]).find(a=>a.id===assId):null;
+  const deEl=document.getElementById('m-art-de'),ateEl=document.getElementById('m-art-ate');
+  if(!deEl||!ateEl)return;
+  deEl.innerHTML='<option value="">—</option>';ateEl.innerHTML='<option value="">—</option>';
+  const maxArt=ass&&ass.totalArtigos>0?ass.totalArtigos:(disc?disc.total:0);
+  const doneList=ass&&Array.isArray(ass.artigos)?ass.artigos:(disc?disc.artigos||[]:[]); 
+  if(maxArt>0){for(let i=1;i<=maxArt;i++){const done=doneList.includes(i);const opt=`<option value="${i}" ${done?'style="color:#888;"':''}>${i}${done?' ✓':''}</option>`;deEl.innerHTML+=opt;ateEl.innerHTML+=opt;}}
 }
 function modalEditDiscChange(){
   const discId=parseInt(document.getElementById('m-disc-sel').value)||null;
@@ -1319,11 +1337,16 @@ function saveModal(){
         if(oldDisc)oldDisc.artigos=oldDisc.artigos.filter(a=>!r.artigos.includes(a));
       }
       r.discId=newDiscId;r.discNome=newDisc?newDisc.nome:'';r.disc=r.discNome;
+      const newAssId=parseInt((document.getElementById('m-assunto-sel')||{}).value)||null;
+      const newAss=newDisc&&newAssId?(newDisc.assuntos||[]).find(a=>a.id===newAssId):null;
+      r.assuntoId=newAssId;r.assuntoNome=newAss?newAss.nome:'';
       const newArtDe=parseInt(document.getElementById('m-art-de').value)||null;
       const newArtAte=parseInt(document.getElementById('m-art-ate').value)||newArtDe;
       r.artDe=newArtDe;r.artAte=newArtAte;
       r.artigos=newArtDe?getArtigosRange(newArtDe,newArtAte):[];
-      if(newDisc&&r.artigos.length)r.artigos.forEach(a=>{if(!newDisc.artigos.includes(a))newDisc.artigos.push(a);});
+      // add artigos to assunto or disc
+      if(newAss&&Array.isArray(newAss.artigos)&&r.artigos.length)r.artigos.forEach(a=>{if(!newAss.artigos.includes(a))newAss.artigos.push(a);});
+      else if(newDisc&&r.artigos.length)r.artigos.forEach(a=>{if(!newDisc.artigos.includes(a))newDisc.artigos.push(a);});
       // update hours
       const _h=parseInt(document.getElementById('m-rev-horas').value)||0;
       const _m=parseInt(document.getElementById('m-rev-min').value)||0;
@@ -2159,6 +2182,47 @@ function confirmCancel(){
   confirmCtx=null;cancelCtx=null;
 }
 function confirmOk(){document.getElementById('confirm-overlay').classList.remove('open');if(confirmCtx)confirmCtx();confirmCtx=null;cancelCtx=null;}
+
+function renderAssuntoList(discId){
+  const disc=state.disciplinas.find(d=>d.id===discId);
+  if(!disc)return;
+  const listEl=document.getElementById('disc-assunto-list');
+  if(!listEl)return;
+  if(!disc.assuntos||!disc.assuntos.length){
+    listEl.innerHTML='<span style="font-size:12px;color:var(--text2);">Nenhum assunto cadastrado.</span>';return;
+  }
+  listEl.innerHTML=disc.assuntos.map(a=>{
+    const prog=calcAssuntoProgress(a);
+    const artStr=a.totalArtigos>0?(' ('+( Array.isArray(a.artigos)?a.artigos.length:0)+'/'+a.totalArtigos+' art.)'):'' ;
+    return '<div style="display:flex;align-items:center;gap:5px;padding:4px 0;">'
+      +'<span style="flex:1;font-size:12px;">'+(a.estudado?'✓ ':Math.round(prog*100)>0?Math.round(prog*100)+'% ':'')+a.nome+artStr+'</span>'
+      +'<button onclick="discEditAssunto('+discId+','+a.id+')" style="font-size:10px;padding:2px 6px;background:transparent;border-color:var(--border);color:var(--text2);">✎</button>'
+      +'<button onclick="discToggleAssunto('+discId+','+a.id+')" style="font-size:10px;padding:2px 6px;">'+(a.estudado?'Desmarcar':'Marcar')+'</button>'
+      +'<button onclick="discDeleteAssunto('+discId+','+a.id+')" style="font-size:10px;padding:2px 5px;background:#FCEBEB;color:#A32D2D;border-color:#E8B4B4;">✕</button>'
+      +'</div>';
+  }).join('');
+}
+function discEditAssunto(discId,assId){
+  const disc=state.disciplinas.find(d=>d.id===discId);if(!disc)return;
+  const ass=(disc.assuntos||[]).find(a=>a.id===assId);if(!ass)return;
+  showConfirm('Editar assunto','',null,null,null,
+    '<div style="display:flex;flex-direction:column;gap:8px;">'
+    +'<div><span class="fg-label">Nome</span><input type="text" id="ass-edit-nome" value="'+ass.nome+'" style="width:100%;"/></div>'
+    +'<div><span class="fg-label">Total de artigos (0 = sem artigos)</span><input type="number" id="ass-edit-arts" value="'+(ass.totalArtigos||0)+'" min="0" style="width:100%;"/></div>'
+    +'<button onclick="discSaveAssunto('+discId+','+assId+')" style="width:100%;justify-content:center;background:var(--blue);color:#fff;border-color:var(--blue);">Salvar</button>'
+    +'</div>'
+  );
+}
+function discSaveAssunto(discId,assId){
+  const disc=state.disciplinas.find(d=>d.id===discId);if(!disc)return;
+  const ass=(disc.assuntos||[]).find(a=>a.id===assId);if(!ass)return;
+  const nome=(document.getElementById('ass-edit-nome')||{}).value.trim();
+  const arts=parseInt((document.getElementById('ass-edit-arts')||{}).value)||0;
+  if(nome)ass.nome=nome;
+  if(arts!==ass.totalArtigos){ass.totalArtigos=arts;if(arts===0){ass.artigos=[];}}
+  document.getElementById('confirm-overlay').classList.remove('open');
+  save();renderProgresso();
+}
 function discAddAssunto(discId){
   const disc=state.disciplinas.find(d=>d.id===discId);if(!disc)return;
   const inp=document.getElementById('disc-novo-assunto');
@@ -2184,29 +2248,12 @@ function discToggleAssunto(discId,assId){
   const disc=state.disciplinas.find(d=>d.id===discId);if(!disc)return;
   const ass=(disc.assuntos||[]).find(a=>a.id===assId);if(!ass)return;
   ass.estudado=!ass.estudado;
-  save();renderProgresso();
-  const listEl=document.getElementById('disc-assunto-list');
-  if(listEl){
-    const _asArr=disc.assuntos;
-    listEl.innerHTML=_asArr.map(a=>'<div style="display:flex;align-items:center;gap:6px;padding:4px 0;">'
-      +'<span style="flex:1;font-size:12px;">'+(a.estudado?'✓ ':'')+a.nome+'</span>'
-      +'<button onclick="discToggleAssunto('+discId+','+a.id+')" style="font-size:10px;padding:2px 6px;">'+(a.estudado?'Desmarcar':'Marcar')+'</button>'
-      +'<button onclick="discDeleteAssunto('+discId+','+a.id+')" style="font-size:10px;padding:2px 6px;background:#FCEBEB;color:#A32D2D;border-color:#E8B4B4;">✕</button>'
-      +'</div>').join('');
-  }
+  save();renderProgresso();renderAssuntoList(discId);
 }
 function discDeleteAssunto(discId,assId){
   const disc=state.disciplinas.find(d=>d.id===discId);if(!disc)return;
   disc.assuntos=(disc.assuntos||[]).filter(a=>a.id!==assId);
-  save();renderProgresso();
-  const listEl=document.getElementById('disc-assunto-list');
-  if(listEl){
-    listEl.innerHTML=disc.assuntos.map(a=>'<div style="display:flex;align-items:center;gap:6px;padding:4px 0;">'
-      +'<span style="flex:1;font-size:12px;">'+(a.estudado?'✓ ':'')+a.nome+'</span>'
-      +'<button onclick="discToggleAssunto('+discId+','+a.id+')" style="font-size:10px;padding:2px 6px;">'+(a.estudado?'Desmarcar':'Marcar')+'</button>'
-      +'<button onclick="discDeleteAssunto('+discId+','+a.id+')" style="font-size:10px;padding:2px 6px;background:#FCEBEB;color:#A32D2D;border-color:#E8B4B4;">✕</button>'
-      +'</div>').join('') || '<span style="font-size:12px;color:var(--text2);">Nenhum assunto cadastrado.</span>';
-  }
+  save();renderProgresso();renderAssuntoList(discId);
 }
 function openDiscModal(id){
   const disc=state.disciplinas.find(d=>d.id===id);if(!disc)return;
@@ -2220,6 +2267,7 @@ function openDiscModal(id){
     +'<button onclick="discDeleteAssunto('+disc.id+','+a.id+')" style="font-size:10px;padding:2px 6px;background:#FCEBEB;color:#A32D2D;border-color:#E8B4B4;">✕</button>'
     +'</div>').join('');
   const _discArtInfo=disc.total>0?` · ${disc.artigos.length}/${disc.total} art. (disciplina)`:'';
+  setTimeout(()=>renderAssuntoList(id),50);
   showConfirm(disc.nome,`${pct}% concluído${_discArtInfo}`,null,null,null,
     `<div style="display:flex;gap:10px;flex-direction:column;">
       <label style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg2);border-radius:var(--radius-sm);font-size:12px;cursor:pointer;">
@@ -2228,7 +2276,7 @@ function openDiscModal(id){
       </label>
       <div>
         <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);margin-bottom:6px;">Assuntos / tópicos</div>
-        <div id="disc-assunto-list">${_asHtml||'<span style="font-size:12px;color:var(--text2);">Nenhum assunto cadastrado.</span>'}</div>
+        <div id="disc-assunto-list"></div>
         <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
           <input type="text" id="disc-novo-assunto" placeholder="Nome do assunto..." style="flex:2;min-width:120px;font-size:13px;"/>
           <input type="number" id="disc-novo-assunto-arts" placeholder="Nº artigos (opcional)" min="0" style="flex:1;min-width:80px;font-size:13px;"/>
@@ -2244,7 +2292,7 @@ function updateDiscColor(id,cor){
   const d=state.disciplinas.find(x=>x.id===id);
   if(d){d.cor=cor;save();renderProgresso();renderHoras();}
 }
-function doResetDisc(id){const d=state.disciplinas.find(x=>x.id===id);if(d)d.artigos=[];save();renderProgresso();document.getElementById('confirm-overlay').classList.remove('open');}
+function doResetDisc(id){const d=state.disciplinas.find(x=>x.id===id);if(d){d.artigos=[];(d.assuntos||[]).forEach(a=>{a.estudado=false;a.artigos=[];});}save();renderProgresso();document.getElementById('confirm-overlay').classList.remove('open');}
 function doDeleteDisc(id){state.disciplinas=state.disciplinas.filter(x=>x.id!==id);save();renderProgresso();populateDiscSel();document.getElementById('confirm-overlay').classList.remove('open');}
 function confirmClearHoras(){
   showConfirm('Limpar histórico','O que deseja apagar?',null,null,null,
