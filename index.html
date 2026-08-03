@@ -1356,7 +1356,12 @@ function saveModal(){
         if(hEntry){hEntry.horas=newHoras;hEntry.disc=r.discNome||(r.tema||'Estudo');hEntry.nota=buildChipLabel(r);}
         else state.horas.unshift({id:r.id+1,data:r.data,disc:r.discNome||(r.tema||'Estudo'),horas:newHoras,nota:buildChipLabel(r),fromRevisao:true});
       }else if(hEntry){state.horas=state.horas.filter(h=>h.id!==r.id+1);}
-      if(nd!==r.data){r.data=nd;r.revDates=addRevDates(nd);r.done=[false,false,false];}
+      if(nd!==r.data){
+        // atualizar data no registro de horas também
+        const hEntryDate=state.horas.find(h=>h.id===r.id+1);
+        if(hEntryDate)hEntryDate.data=nd;
+        r.data=nd;r.revDates=addRevDates(nd);r.done=[false,false,false];
+      }
     }
   }else{
     const h=state.horas.find(x=>x.id===id);
