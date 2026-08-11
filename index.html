@@ -1397,13 +1397,12 @@ function buildChipLabel(r){
   const tema=r.tema||'';
   let artStr='';
   if(r.artDe){const ate=r.artAte||r.artDe;artStr=r.artDe===ate?`art. ${r.artDe}`:`art. ${r.artDe} ao ${ate}`;}
-  // build: disc > assunto > artigos > tema
   let parts=[];
   if(disc)parts.push(disc);
   if(ass)parts.push(ass);
   if(artStr)parts.push(artStr);
-  if(tema&&!ass&&!artStr)parts.push(tema); // só mostra tema se não tiver assunto/art
-  return parts.join(': ')||tema||'Sem descrição';
+  if(tema)parts.push(tema); // sempre mostra o tema livre se preenchido
+  return parts.join(': ')||'Sem descrição';
 }
 function chipShort(r,max){max=max||26;const f=buildChipLabel(r);return f.length>max?f.slice(0,max-1)+'…':f;}
 
