@@ -1191,7 +1191,12 @@ function onDiscChange(){
   if(!hasAssuntos&&disc.total>0){
     if(artDeWrap)artDeWrap.style.display='';
     if(artAteWrap)artAteWrap.style.display='';
-    for(let i=1;i<=disc.total;i++){deEl.innerHTML+=`<option value="${i}">${i}</option>`;ateEl.innerHTML+=`<option value="${i}">${i}</option>`;}
+    const _done=disc.artigos||[];
+    for(let i=1;i<=disc.total;i++){
+      const ok=_done.includes(i)||_done.includes(String(i));
+      const opt=`<option value="${i}" ${ok?'style="color:#888;"':''}>${i}${ok?' ✓':''}</option>`;
+      deEl.innerHTML+=opt;ateEl.innerHTML+=opt;
+    }
     onArtChange();
   }
 }
@@ -1728,10 +1733,12 @@ function toggleDone(id,typeIdx){
   const wasDone=r.done[typeIdx];
   const rid=r.id*100+typeIdx;
   if(wasDone){
-    // uncheck: remove directly
-    r.done[typeIdx]=false;
-    state.horas=state.horas.filter(h=>h.id!==rid);
-    save();renderTimeline();renderHoras();renderDashboard();
+    // uncheck: pedir confirmação antes
+    showConfirm('Desmarcar revisão','Deseja desmarcar esta revisão como concluída? O tempo registrado será removido.','Desmarcar','background:#A32D2D;color:#fff;border-color:#A32D2D;',()=>{
+      r.done[typeIdx]=false;
+      state.horas=state.horas.filter(h=>h.id!==rid);
+      save();renderTimeline();renderHoras();renderDashboard();
+    },null,()=>{renderTimeline();renderDashboard();});
     return;
   }
   // check: show time popup, revert checkbox if cancelled
